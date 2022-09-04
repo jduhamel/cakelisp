@@ -260,6 +260,16 @@
        (token-splice-rest body tokens))))
   (return true))
 
+(defmacro each-item-addr-in-array (array-name any iterator-name symbol
+                                   item-name symbol item-type any &rest body any)
+  (tokenize-push output
+    (scope
+     (each-in-range (array-size (token-splice array-name)) (token-splice iterator-name)
+       (var (token-splice item-name) (token-splice item-type)
+         (addr (at (token-splice iterator-name) (token-splice array-name))))
+       (token-splice-rest body tokens))))
+  (return true))
+
 ;; Note: Will reevaluate the range expression each iteration
 (defmacro each-in-range (range any iterator-name symbol &rest body any)
   (tokenize-push output

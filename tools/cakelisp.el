@@ -29,6 +29,7 @@
     (put 'each-in-interval 'lisp-indent-function 3)
     (put 'each-in-closed-interval-descending 'lisp-indent-function 3)
     (put 'each-in-array 'lisp-indent-function 2)
+    (put 'each-item-addr-in-array 'lisp-indent-function 4)
     (put 'each-char-in-string 'lisp-indent-function 2)
     (put 'each-char-in-string-const 'lisp-indent-function 2)
     (put 'c-for 'lisp-indent-function 3)
