@@ -381,6 +381,25 @@ bool resolveExecutablePath(const char* fileToExecute, char* resolvedPathOut,
 		}
 		return false;
 	}
+	else if (_stricmp(fileToExecute, "cmake.exe") == 0)
+	{
+		static char visualStudioPath[2048] = {0};
+		if (!visualStudioPath[0])
+		{
+			Find_Result result = find_visual_studio_and_windows_sdk();
+			SafeSnprintf(visualStudioPath, sizeof(visualStudioPath), "%ws", result.vs_root_path);
+			free_resources(&result);
+		}
+		SafeSnprintf(resolvedPathOut, resolvedPathOutSize,
+		             "%s\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
+		             visualStudioPath);
+		if (fileExists(resolvedPathOut))
+		{
+			if (logging.processes)
+				Logf("\nOverriding command to:\n%s\n\n", resolvedPathOut);
+			return true;
+		}
+	}
 #endif
 
 	// Unix searches PATH automatically, thanks to the 'p' of execvp()
