@@ -11,13 +11,13 @@
 
 (c-preprocessor-define MAX_PATH_LENGTH 255)
 
-(def-type-alias-global my-type (<> (in std vector) (<> (in std vector) int)))
+(def-type-alias-global my-type (template (in std vector) (template (in std vector) int)))
 (def-type-alias-global my-string (const (in std string)))
-(def-type-alias-global my-string-array (const ([] (+ 2 3) (in std string))))
-(def-type-alias-global my-string-array-2 (const ([] 5 (in std string))))
-(def-type-alias-global my-const-pointer (const (* (const int))))
+(def-type-alias-global my-string-array (const (array (+ 2 3) (in std string))))
+(def-type-alias-global my-string-array-2 (const (array 5 (in std string))))
+(def-type-alias-global my-const-pointer (const (addr (const int))))
 (def-type-alias-global my-const-vector-pointer
-    (const (* (<> (in std vector) (<> (in std vector) int)))))
+    (const (addr (template (in std vector) (template (in std vector) int)))))
 
 (defun main (&return int)
   (fprintf stderr "Path length: %d\n" MAX_PATH_LENGTH)

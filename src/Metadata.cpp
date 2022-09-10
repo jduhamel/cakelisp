@@ -186,14 +186,20 @@ GeneratorMetadata g_generatorMetadata[] = {
     {"-", GeneratorCategory_Math, LanguageRequirement_C,
      (EvaluationTime_CompileTime | EvaluationTime_Runtime), 2, MaxArgumentsUnlimited,
      "Subtract the arguments. E.g. (- 4 2) = 2."},
-    {"bit-<<", GeneratorCategory_Math, LanguageRequirement_C,
+    {"bit-shift-<<", GeneratorCategory_Math, LanguageRequirement_C,
      (EvaluationTime_CompileTime | EvaluationTime_Runtime), 2, 2,
      "Shift the bits in the first argument to the left by the number indicated by the second "
-     "argument. E.g. (bit-<< 1 2) = 4."},
-    {"bit->>", GeneratorCategory_Math, LanguageRequirement_C,
+     "argument. E.g. (bit-shift-<< 1 2) = 4."},
+    {"bit-shift->>", GeneratorCategory_Math, LanguageRequirement_C,
      (EvaluationTime_CompileTime | EvaluationTime_Runtime), 2, 2,
      "Shift the bits in the first argument to the right by the number indicated by the second "
-     "argument. E.g. (bit->> 4 2) = 1."},
+     "argument. E.g. (bit-shift->> 4 2) = 1."},
+    {"bit-<<", GeneratorCategory_Math, LanguageRequirement_C,
+     (EvaluationTime_CompileTime | EvaluationTime_Runtime), 2, 2,
+     "[DEPRECATED] Use (bit-shift-<<) instead."},
+    {"bit->>", GeneratorCategory_Math, LanguageRequirement_C,
+     (EvaluationTime_CompileTime | EvaluationTime_Runtime), 2, 2,
+     "[DEPRECATED] Use (bit-shift->>) instead."},
     {
         "bit-or",
     },
@@ -381,9 +387,9 @@ GeneratorMetadata g_generatorMetadata[] = {
     //
     // Memory
     //
-    {
-        "set",
-    },
+    {"set", GeneratorCategory_Memory, LanguageRequirement_C,
+     (EvaluationTime_CompileTime | EvaluationTime_Runtime), 2, 2,
+     "Set the first argument to the second argument."},
     {"field", GeneratorCategory_Memory, LanguageRequirement_C,
      (EvaluationTime_CompileTime | EvaluationTime_Runtime), 2, MaxArgumentsUnlimited,
      "field accesses the field of a structure. (field my-struct field) would generate "
@@ -394,15 +400,17 @@ GeneratorMetadata g_generatorMetadata[] = {
      "my-ptr > ptr-to-struct > inline-struct . field) would generate "
      "myPtr->ptrToStruct->inlineStruct.field. Use (field) if you are not accessing memory "
      "through pointers."},
-    {
-        "addr",
-    },
-    {
-        "deref",
-    },
-    {
-        "at",
-    },
+    {"addr", GeneratorCategory_Memory, LanguageRequirement_C,
+     (EvaluationTime_CompileTime | EvaluationTime_Runtime), 1, 1,
+     "Get the address of the argument in memory."},
+    {"deref", GeneratorCategory_Memory, LanguageRequirement_C,
+     (EvaluationTime_CompileTime | EvaluationTime_Runtime), 1, 1, "Dereference the pointer given."},
+    {"at", GeneratorCategory_Memory, LanguageRequirement_C,
+     (EvaluationTime_CompileTime | EvaluationTime_Runtime), 2, 2,
+     "Access the memory at array offset specified by the first argument, using the type of the "
+     "second argument as the increment size. Equivalent to argument2[argument1] in C."},
+    {"nth", GeneratorCategory_Memory, LanguageRequirement_C,
+     (EvaluationTime_CompileTime | EvaluationTime_Runtime), 2, 2, "[DEPRECATED] Use (at) instead."},
 
     //
     // Code generation

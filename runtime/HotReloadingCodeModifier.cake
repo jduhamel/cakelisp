@@ -55,7 +55,7 @@
 ;; TODO: Potential bug if vars miss modified-vars stage. Need to store list of modified vars instead
 ;;       (would also need to keep track of modified references...yikes)
 ;; TODO: Need to take scope into account before changing a symbol (was it actually a module-private var)
-(defun-comptime make-code-hot-reloadable (environment (& EvaluatorEnvironment)
+(defun-comptime make-code-hot-reloadable (environment (ref EvaluatorEnvironment)
                                           &return bool)
   (var verbose bool false)
 
@@ -67,29 +67,29 @@
   (fprintf stderr "HotReloading: Modifying code for hot-reloading.\n")
   (fprintf stderr "Subsequent modifications will not be hot-reloading safe\n")
 
-  (get-or-create-comptime-var modules-with-import (<> std::unordered_map std::string int))
+  (get-or-create-comptime-var modules-with-import (template (in std unordered_map) (in std string) int))
 
   (defstruct modify-definition
     name (in std string)
-    expanded-definition (<> std::vector Token)
-    module (* Module))
-  (var variables-to-modify (<> std::vector modify-definition))
+    expanded-definition (template (in std vector) Token)
+    module (addr Module))
+  (var variables-to-modify (template (in std vector) modify-definition))
 
   ;; Collect variables. It must be done separately from modification because modification will
   ;; invalidate definition iterators
-  (for-in definition-pair (& ObjectDefinitionPair) (field environment definitions)
+  (for-in definition-pair (ref ObjectDefinitionPair) (field environment definitions)
     (unless (= (field definition-pair second type) ObjectType_Variable)
       (continue))
 
     ;; Check if this variable is reloadable
-    (var variable-start-invocation (* (const Token))
+    (var variable-start-invocation (addr (const Token))
       (field definition-pair second definitionInvocation))
-    (var variable-type (* (const Token)) (+ variable-start-invocation 3))
+    (var variable-type (addr (const Token)) (+ variable-start-invocation 3))
     (when (= TokenType_OpenParen (path variable-type > type))
-      (var top-level-type (* (const Token)) (+ variable-type 1))
+      (var top-level-type (addr (const Token)) (+ variable-type 1))
       (cond
         ;; TODO: Add array support
-        ((= 0 (call-on compare (path top-level-type > contents) "[]"))
+        ((= 0 (call-on compare (path top-level-type > contents) "array"))
          (NoteAtToken (deref variable-start-invocation) "hot-reloadable arrays not supported yet")
          (continue))
         ;; Constants cannot be changed, so do not need to be reloaded
@@ -98,7 +98,7 @@
          (continue))))
 
     (when verbose (fprintf stderr ">>> Variable %s\n" (call-on c_str (field definition-pair first))))
-    (var definition (& ObjectDefinition) (field definition-pair second))
+    (var definition (ref ObjectDefinition) (field definition-pair second))
     (var var-to-modify modify-definition)
     (unless (CreateDefinitionCopyMacroExpanded definition
                                                (field var-to-modify expanded-definition))
@@ -111,22 +111,22 @@
   ;; Collect references to variables we're going to need to auto-deref
   ;; TODO: variables can have initializers which reference modded variables, which the init functions
   ;; will need to take into account
-  (var references-to-modify (<> std::vector modify-definition))
-  (for-in definition-pair (& ObjectDefinitionPair) (field environment definitions)
+  (var references-to-modify (template (in std vector) modify-definition))
+  (for-in definition-pair (ref ObjectDefinitionPair) (field environment definitions)
     (unless (= (field definition-pair second type) ObjectType_Function)
       (continue))
     ;; This is pretty brutal: Expanding every single definition which might have a ref...
-    (var definition (& ObjectDefinition) (field definition-pair second))
+    (var definition (ref ObjectDefinition) (field definition-pair second))
     (var def-to-modify modify-definition)
     (unless (CreateDefinitionCopyMacroExpanded definition
                                                (field def-to-modify expanded-definition))
       (return false))
 
     (var reference-found bool false)
-    (for-in token (& (const Token)) (field def-to-modify expanded-definition)
+    (for-in token (ref (const Token)) (field def-to-modify expanded-definition)
       (unless (= (field token type) TokenType_Symbol)
         (continue))
-      (for-in var-to-modify (& (const modify-definition)) variables-to-modify
+      (for-in var-to-modify (ref (const modify-definition)) variables-to-modify
         (when (= 0 (call-on compare (field token contents)
                             (field (at 2 (field var-to-modify expanded-definition)) contents)))
           (set reference-found true)
@@ -141,16 +141,16 @@
     (set (field def-to-modify name) (field definition-pair first))
     (call-on push_back references-to-modify (call (in std move) def-to-modify)))
 
-  (var initializer-names (<> std::vector Token))
+  (var initializer-names (template (in std vector) Token))
 
   ;; First = module filename. Second = initializer name token (for blaming)
-  (var modules-to-import (<> std::unordered_map std::string Token))
+  (var modules-to-import (template (in std unordered_map) (in std string) Token))
 
   ;; Pointerify variables and create initializer functions
-  (for-in var-to-modify (& modify-definition) variables-to-modify
-    (var expanded-var-tokens (& (<> std::vector Token))
+  (for-in var-to-modify (ref modify-definition) variables-to-modify
+    (var expanded-var-tokens (ref (template (in std vector) Token))
       (field var-to-modify expanded-definition))
-    (var module (* Module) (field var-to-modify module))
+    (var module (addr Module) (field var-to-modify module))
 
     ;; Before
     (when verbose (prettyPrintTokens expanded-var-tokens))
@@ -173,17 +173,17 @@
 	(when (= type-index -1)
 	  (return false))
 
-    (var var-invocation (& Token) (at 1 expanded-var-tokens))
-    (var var-name (& Token) (at var-name-index expanded-var-tokens))
-    (var type-start (& Token) (at type-index expanded-var-tokens))
+    (var var-invocation (ref Token) (at 1 expanded-var-tokens))
+    (var var-name (ref Token) (at var-name-index expanded-var-tokens))
+    (var type-start (ref Token) (at type-index expanded-var-tokens))
 
     ;; Pointerify, remove intializer
-    (var new-var-tokens (* (<> std::vector Token)) (new (<> std::vector Token)))
+    (var new-var-tokens (addr (template (in std vector) Token)) (new (template (in std vector) Token)))
     (call-on push_back (field environment comptimeTokens) new-var-tokens)
     (tokenize-push (deref new-var-tokens)
       ((token-splice-addr var-invocation)
        (token-splice-addr var-name)
-       (* (token-splice-addr type-start))
+       (addr (token-splice-addr type-start))
        null))
 
     ;; After
@@ -194,13 +194,13 @@
     (var string-var-name Token var-name)
     (set (field string-var-name type) TokenType_String)
     (scope ;; Create initializer function name from variable name
-     (var converted-name-buffer ([] 64 char) (array 0))
+     (var converted-name-buffer (array 64 char) (array 0))
      ;; TODO: Need to pass this in somehow
      (var name-style NameStyleSettings)
      (lispNameStyleToCNameStyle (field name-style variableNameMode) (call-on c_str (field var-name contents))
                                 converted-name-buffer (sizeof converted-name-buffer) var-name)
 
-     (var init-function-name-buffer ([] 256 char) (array 0))
+     (var init-function-name-buffer (array 256 char) (array 0))
      (PrintfBuffer init-function-name-buffer "hotReloadInitVar_%s" converted-name-buffer)
      (set (field init-function-name contents) init-function-name-buffer))
 
@@ -208,24 +208,24 @@
     (call-on push_back initializer-names init-function-name)
     (set (at (path module > filename) modules-to-import) init-function-name)
 
-    (var assignment-tokens (<> std::vector Token))
+    (var assignment-tokens (template (in std vector) Token))
     (scope ;; Optional assignment
      (var assignment-index int
        (getArgument expanded-var-tokens start-token-index 3 endInvocationIndex))
      (when (!= assignment-index -1)
-       (var assignment-token (* Token) (addr (at assignment-index expanded-var-tokens)))
+       (var assignment-token (addr Token) (addr (at assignment-index expanded-var-tokens)))
        (tokenize-push assignment-tokens
          (set (deref (token-splice-addr var-name)) (token-splice assignment-token)))))
 
-    (var initializer-procedure-tokens (* (<> std::vector Token)) (new (<> std::vector Token)))
+    (var initializer-procedure-tokens (addr (template (in std vector) Token)) (new (template (in std vector) Token)))
     (call-on push_back (field environment comptimeTokens) initializer-procedure-tokens)
     ;; Note that we don't auto-deref this; this is the only place where that's the case
     (tokenize-push
         (deref initializer-procedure-tokens)
       (defun (token-splice-addr init-function-name) ()
-        (var existing-value (* void) nullptr)
+        (var existing-value (addr void) nullptr)
         (if (hot-reload-find-variable (token-splice-addr string-var-name) (addr existing-value))
-            (set (token-splice-addr var-name) (type-cast existing-value (* (token-splice-addr type-start))))
+            (set (token-splice-addr var-name) (type-cast existing-value (addr (token-splice-addr type-start))))
             (scope ;; Create the variable
              ;; C can have an easier time with plain old malloc and cast
              (set (token-splice-addr var-name) (new (token-splice-addr type-start)))
@@ -254,10 +254,10 @@
      (set (field initializer-context isRequired) true)
 
      ;; Make sure HotReloading header is included
-     (var module-filename (* (const char)) (path module > filename))
+     (var module-filename (addr (const char)) (path module > filename))
      (when (= (call-on find (deref modules-with-import) module-filename)
               (call-on-ptr end modules-with-import))
-       (var import-hot-reloading-tokens (* (<> std::vector Token)) (new (<> std::vector Token)))
+       (var import-hot-reloading-tokens (addr (template (in std vector) Token)) (new (template (in std vector) Token)))
        (call-on push_back (field environment comptimeTokens) import-hot-reloading-tokens)
        ;; Make sure we don't build our own version of this. The loader needs to manage it
        (tokenize-push (deref import-hot-reloading-tokens) (import &decls-only "HotReloading.cake"))
@@ -276,20 +276,20 @@
        (return false))))
 
   ;; Auto-dereference any references to the variables we've converted to pointers
-  (for-in def-to-modify (& modify-definition) references-to-modify
-    (var expanded-def-tokens (& (<> std::vector Token))
+  (for-in def-to-modify (ref modify-definition) references-to-modify
+    (var expanded-def-tokens (ref (template (in std vector) Token))
       (field def-to-modify expanded-definition))
-    (var module (* Module) (field def-to-modify module))
-    (var new-definition (* (<> std::vector Token)) (new (<> std::vector Token)))
+    (var module (addr Module) (field def-to-modify module))
+    (var new-definition (addr (template (in std vector) Token)) (new (template (in std vector) Token)))
     (call-on push_back (field environment comptimeTokens) new-definition)
-    (for-in token (& (const Token)) expanded-def-tokens
+    (for-in token (ref (const Token)) expanded-def-tokens
       (unless (= (field token type) TokenType_Symbol)
         (call-on push_back (deref new-definition) token)
         (continue))
 
       ;; Check for reference
       (var reference-found bool false)
-      (for-in var-to-modify (& (const modify-definition)) variables-to-modify
+      (for-in var-to-modify (ref (const modify-definition)) variables-to-modify
         (when (= 0 (call-on compare (field token contents)
                             (field (at 2 (field var-to-modify expanded-definition)) contents)))
           (set reference-found true)
@@ -300,7 +300,7 @@
         (continue))
 
       ;; Insert the deref
-      (var auto-deref-tokens (<> std::vector Token))
+      (var auto-deref-tokens (template (in std vector) Token))
       (tokenize-push auto-deref-tokens (deref (token-splice-addr token)))
       (PushBackAll (deref new-definition) auto-deref-tokens))
 
@@ -315,16 +315,16 @@
   ;; rebuilds if different subsets of files are built. If it is housed here, only this file will
   ;; need to be recompiled
   (scope
-   (var new-initializer-def (* (<> std::vector Token)) (new (<> std::vector Token)))
+   (var new-initializer-def (addr (template (in std vector) Token)) (new (template (in std vector) Token)))
    ;; Environment will handle freeing tokens for us
    (call-on push_back (field environment comptimeTokens) new-initializer-def)
 
-   (var invocations (<> std::vector Token))
-   (for-in initializer-name (& Token) initializer-names
+   (var invocations (template (in std vector) Token))
+   (for-in initializer-name (ref Token) initializer-names
      (tokenize-push invocations ((token-splice-addr initializer-name))))
 
-   (var imports (<> std::vector Token))
-   (for-in module-to-import (& (<> std::pair (const std::string) Token)) modules-to-import
+   (var imports (template (in std vector) Token))
+   (for-in module-to-import (ref (template std::pair (const (in std string)) Token)) modules-to-import
      (var module-name Token (field module-to-import second))
      (set (field module-name contents) (field module-to-import first))
      (set (field module-name type) TokenType_String)

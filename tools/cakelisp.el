@@ -58,7 +58,7 @@
     (font-lock-add-keywords nil '(("\\b\\(true\\|false\\|null\\)\\b"
                                    1 font-lock-builtin-face)))
 
-    (font-lock-add-keywords nil '(("(\\(addr\\|and\\|array\\|at\\|bit-<<\\|bit->>\\|bit-and\\|bit-ones-complement\\|bit-or\\|bit-xor\\|call\\|call-on\\|call-on-ptr\\|decr\\|def-function-signature\\|def-function-signature-global\\|def-type-alias\\|def-type-alias-global\\|defgenerator\\|defmacro\\|defstruct\\|defstruct-local\\|defun\\|defun-comptime\\|defun-local\\|defun-nodecl\\|delete\\|delete-array\\|deref\\|eq\\|field\\|in\\|incr\\|mod\\|neq\\|new\\|new-array\\|not\\|nth\\|or\\|path\\|scope\\|defer\\|set\\|type\\|type-cast\\|var\\|var-global\\|var-static\\)[ )\n]"
+    (font-lock-add-keywords nil '(("(\\(addr\\|ref\\|template\\|and\\|array\\|at\\|bit-shift-<<\\|bit-shift->>\\|bit-and\\|bit-ones-complement\\|bit-or\\|bit-xor\\|call\\|call-on\\|call-on-ptr\\|decr\\|def-function-signature\\|def-function-signature-global\\|def-type-alias\\|def-type-alias-global\\|defgenerator\\|defmacro\\|defstruct\\|defstruct-local\\|defun\\|defun-comptime\\|defun-local\\|defun-nodecl\\|delete\\|delete-array\\|deref\\|eq\\|field\\|in\\|incr\\|mod\\|neq\\|new\\|new-array\\|not\\|nth\\|or\\|path\\|scope\\|defer\\|set\\|type\\|type-cast\\|var\\|var-global\\|var-static\\)[ )\n]"
                                    1 font-lock-keyword-face)))
 
     ;; Control flow

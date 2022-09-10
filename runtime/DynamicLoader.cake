@@ -17,22 +17,22 @@
    "This module requires platform-specific code. Please define your platform before importing" \
    " this module, e.g.: (comptime-define-symbol 'Unix). Supported platforms: 'Unix, 'Windows")))
 
-(def-type-alias-global DynamicLibHandle (* void))
+(def-type-alias-global DynamicLibHandle (addr void))
 
 (c-preprocessor-define MAX_PATH_LENGTH 256)
 
 (defstruct DynamicLibrary
   handle DynamicLibHandle)
 
-(def-type-alias DynamicLibraryMap (<> std::unordered_map std::string DynamicLibrary))
+(def-type-alias DynamicLibraryMap (template (in std unordered_map) (in std string) DynamicLibrary))
 (var dynamicLibraries DynamicLibraryMap)
 
 ;; allow-global-linking = Allow subsequently loaded libraries to resolve from this library You do
 ;;  NOT want this if you intend to reload the library, because it may resolve to the old version
-(defun dynamic-library-load (libraryPath (* (const char))
+(defun dynamic-library-load (libraryPath (addr (const char))
                              allow-global-linking bool
                              &return DynamicLibHandle)
-  (var libHandle (* void) null)
+  (var libHandle (addr void) null)
 
   (comptime-cond
    ('Unix
@@ -47,16 +47,16 @@
         (set libHandle (dlopen libraryPath (bit-or RTLD_LAZY RTLD_GLOBAL)))
         (set libHandle (dlopen libraryPath (bit-or RTLD_LAZY RTLD_LOCAL))))
 
-    (var error (* (const char)) (dlerror))
+    (var error (addr (const char)) (dlerror))
     (when (or (not libHandle) error)
       (fprintf stderr "DynamicLoader Error:\n%s\n" error)
       (return null)))
    ('Windows
     ;; TODO Clean this up! Only the cakelispBin is necessary I think (need to double check that)
     ;; TODO Clear added dirs after? (RemoveDllDirectory())
-    (var absoluteLibPath (* char)
+    (var absoluteLibPath (addr char)
       (make-absolute-path-allocated null libraryPath))
-    (var dllDirectory ([] MAX_PATH_LENGTH char) (array 0))
+    (var dllDirectory (array MAX_PATH_LENGTH char) (array 0))
     (get-directory-from-path absoluteLibPath dllDirectory (sizeof dllDirectory))
     (path-convert-to-backward-slashes absoluteLibPath)
     (var dll-directory-length size_t (strlen dllDirectory))
@@ -66,7 +66,7 @@
     (path-convert-to-backward-slashes dllDirectory)
     (scope ;; DLL directory
      (var wchars_num int (MultiByteToWideChar CP_UTF8 0 dllDirectory -1 null 0))
-     (var wstrDllDirectory (* wchar_t) (new-array wchars_num wchar_t))
+     (var wstrDllDirectory (addr wchar_t) (new-array wchars_num wchar_t))
      (MultiByteToWideChar CP_UTF8 0 dllDirectory -1 wstrDllDirectory wchars_num)
      (AddDllDirectory wstrDllDirectory)
      (delete-array wstrDllDirectory))
@@ -74,13 +74,13 @@
     ;; When loading cakelisp.lib, it will actually need to find cakelisp.exe for the symbols
     ;; This is only necessary for Cakelisp itself; left here for reference
     ;; (scope ;; Cakelisp directory
-    ;;  (var cakelispBinDirectory (* (const char))
+    ;;  (var cakelispBinDirectory (addr (const char))
     ;;    (makeAbsolutePath_Allocated null "bin"))
     ;;  (var wchars_num int (MultiByteToWideChar CP_UTF8 0 cakelispBinDirectory -1 null 0))
-    ;;  (var wstrDllDirectory (* wchar_t) (new-array wchars_num wchar_t))
+    ;;  (var wstrDllDirectory (addr wchar_t) (new-array wchars_num wchar_t))
     ;;  (MultiByteToWideChar CP_UTF8 0 cakelispBinDirectory -1 wstrDllDirectory wchars_num)
     ;;  (AddDllDirectory wstrDllDirectory)
-    ;;  (free (type-cast cakelispBinDirectory (* void)))
+    ;;  (free (type-cast cakelispBinDirectory (addr void)))
     ;;  (delete-array wstrDllDirectory))
 
     (set libHandle (LoadLibraryEx absoluteLibPath null
@@ -89,16 +89,16 @@
     (unless libHandle
       (fprintf stderr "DynamicLoader Error: Failed to load %s with code %d\n" absoluteLibPath
                (GetLastError))
-      (free (type-cast absoluteLibPath (* void)))
+      (free (type-cast absoluteLibPath (addr void)))
       (return null))
-    (free (type-cast absoluteLibPath (* void)))))
+    (free (type-cast absoluteLibPath (addr void)))))
 
   (set (at libraryPath dynamicLibraries) (array libHandle))
   (return libHandle))
 
 (defun dynamic-library-get-symbol (library DynamicLibHandle
-                                   symbolName (* (const char))
-                                   &return (* void))
+                                   symbolName (addr (const char))
+                                   &return (addr void))
   (unless library
     (fprintf stderr "DynamicLoader Error: Received empty library handle\n")
     (return null))
@@ -106,12 +106,12 @@
   (comptime-cond
    ('Unix
     ;; Clear any existing error before running dlsym
-    (var error (* char) (dlerror))
+    (var error (addr char) (dlerror))
     (when error
       (fprintf stderr "DynamicLoader Error:\n%s\n" error)
       (return null))
 
-    (var symbol (* void) (dlsym library symbolName))
+    (var symbol (addr void) (dlsym library symbolName))
 
     (set error (dlerror))
     (when error
@@ -120,9 +120,9 @@
 
     (return symbol))
    ('Windows
-    (var procedure (* void)
+    (var procedure (addr void)
          (type-cast
-          (GetProcAddress (type-cast library HINSTANCE) symbolName) (* void)))
+          (GetProcAddress (type-cast library HINSTANCE) symbolName) (addr void)))
     (unless procedure
       (fprintf stderr "DynamicLoader Error:\n%d\n" (GetLastError))
       (return null))
@@ -131,7 +131,7 @@
     (return null))))
 
 (defun dynamic-library-close-all ()
-  (for-in libraryPair (& (<> std::pair (const std::string) DynamicLibrary)) dynamicLibraries
+  (for-in libraryPair (ref (template (in std pair) (const (in std string)) DynamicLibrary)) dynamicLibraries
           (comptime-cond
            ('Unix
             (dlclose (field libraryPair second handle)))

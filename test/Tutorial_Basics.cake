@@ -10,7 +10,7 @@
 
 (defmacro defcommand (command-name symbol arguments array &rest body any)
 
-  (get-or-create-comptime-var command-table (<> (in std vector) (* (const Token))))
+  (get-or-create-comptime-var command-table (template (in std vector) (addr (const Token))))
   (call-on-ptr push_back command-table command-name)
 
   (tokenize-push output
@@ -21,18 +21,18 @@
 (defcommand say-your-name ()
   (fprintf stderr "your name.\n"))
 
-(defun-comptime create-command-lookup-table (environment (& EvaluatorEnvironment) &return bool)
+(defun-comptime create-command-lookup-table (environment (ref EvaluatorEnvironment) &return bool)
   (get-or-create-comptime-var command-table-already-created bool false)
   (when (deref command-table-already-created)
     (return true))
   (set (deref command-table-already-created) true)
 
-  (get-or-create-comptime-var command-table (<> (in std vector) (* (const Token))))
+  (get-or-create-comptime-var command-table (template (in std vector) (addr (const Token))))
 
-  (var command-data (* (<> std::vector Token)) (new (<> std::vector Token)))
+  (var command-data (addr (template std::vector Token)) (new (template std::vector Token)))
   (call-on push_back (field environment comptimeTokens) command-data)
 
-  (for-in command-name (* (const Token)) (deref command-table)
+  (for-in command-name (addr (const Token)) (deref command-table)
     (printFormattedToken stderr (deref command-name))
     (fprintf stderr "\n")
 
@@ -45,10 +45,10 @@
 
   (prettyPrintTokens (deref command-data))
 
-  (var command-table-tokens (* (<> std::vector Token)) (new (<> std::vector Token)))
+  (var command-table-tokens (addr (template std::vector Token)) (new (template std::vector Token)))
   (call-on push_back (field environment comptimeTokens) command-table-tokens)
   (tokenize-push (deref command-table-tokens)
-    (var command-table ([] command-metadata)
+    (var command-table (array command-metadata)
       (array (token-splice-array (deref command-data)))))
   (prettyPrintTokens (deref command-table-tokens))
 
@@ -61,13 +61,13 @@
 (def-function-signature command-function ())
 
 (defstruct-local command-metadata
-  name (* (const char))
+  name (addr (const char))
   command command-function)
 
 (splice-point command-lookup-table)
 
 (defun main (num-arguments int
-             arguments ([] (* char))
+             arguments (array (addr char))
              &return int)
   (fprintf stderr "Available commands:\n")
   (each-in-array command-table i

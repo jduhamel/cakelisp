@@ -112,7 +112,7 @@ In GameLib, almost all loops would be fine with a number range, e.g. here are so
 
 ;; Pointer types, end as an expression
 ;; This is a little bit too clunky for this construct
-(each-range (:iter c (* char) buffer (- (+ buffer (array-size buffer)) 1))
+(each-range (:iter c (addr char) buffer (- (+ buffer (array-size buffer)) 1))
   (fprintf stderr "Char is '%c'\n" (deref c)))
 #+END_SRC
 

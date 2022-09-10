@@ -24,12 +24,12 @@ const char* globalDefinitionName = "<global>";
 const char* cakelispWorkingDir = "cakelisp_cache";
 
 const char* g_environmentPreLinkHookSignature =
-    "('manager (& ModuleManager) 'link-command (& ProcessCommand) 'link-time-inputs (* "
+    "('manager (ref ModuleManager) 'link-command (ref ProcessCommand) 'link-time-inputs (addr "
     "ProcessCommandInput) 'num-link-time-inputs int &return bool)";
 const char* g_environmentPostReferencesResolvedHookSignature =
-    "('environment (& EvaluatorEnvironment) &return bool)";
+    "('environment (ref EvaluatorEnvironment) &return bool)";
 
-static const char* g_environmentCompileTimeVariableDestroySignature = "('data (* void))";
+static const char* g_environmentCompileTimeVariableDestroySignature = "('data (addr void))";
 
 GeneratorFunc findGenerator(EvaluatorEnvironment& environment, const char* functionName)
 {

@@ -11,7 +11,7 @@
     (fprintf stderr "%s\n" (token-splice message))
     (fprintf stderr "Second one %s\n" (token-splice message)))
 
-  (var numbers (<> (in std vector) Token))
+  (var numbers (template (in std vector) Token))
   (tokenize-push numbers 1 2 3)
   (tokenize-push output (fprintf stderr "%d %d %d\n" (token-splice-array numbers)))
   (return true))
