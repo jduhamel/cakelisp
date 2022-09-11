@@ -451,3 +451,36 @@
                                (addr alias)))
 
   (return evaluated-success))
+
+;;
+;; Uncategorized
+;;
+
+;; Make it easier to specify fields by name:
+;;(set-fields my-struct
+;;            member-a 43
+;;            member-b (* 3 4)
+;;            (member-c field-a) 3)
+(defmacro set-fields (output-struct any &rest set-fields (index any))
+  (var end-invocation-index int (FindCloseParenTokenIndex tokens startTokenIndex))
+  (var field-name-token (addr (const Token)) null)
+  (each-token-argument-in tokens set-fields end-invocation-index current-index
+    (unless field-name-token
+      (set field-name-token (addr (at current-index tokens)))
+      (continue))
+    (var set-value-token (addr (const Token)) (addr (at current-index tokens)))
+    (if (= (path field-name-token > type) TokenType_OpenParen)
+        (scope ;; Support nested fields via parens
+         (tokenize-push output
+           (set (field (token-splice output-struct)
+                       (token-splice-rest (+ field-name-token 1) tokens))
+                (token-splice set-value-token))))
+        (scope
+         (tokenize-push output
+           (set (field (token-splice output-struct) (token-splice field-name-token))
+                (token-splice set-value-token)))))
+    (set field-name-token null))
+  (when field-name-token
+    (ErrorAtToken (deref field-name-token) "Expected value for this field")
+    (return false))
+  (return true))

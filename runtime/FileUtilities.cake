@@ -176,6 +176,23 @@
     (fread (addr (token-splice item)) (sizeof (token-splice item)) 1 (token-splice in-file)))
   (return true))
 
+;; Automatically closes the file when exited
+;; Note that the on-failure-block is intentionally not optional to encourage error handling
+(defmacro if-open-file-scoped (filename any flags string file-pointer-name symbol
+                               on-success-block array on-failure-block array)
+  (tokenize-push output
+    (scope
+     (var (token-splice file-pointer-name) (addr FILE)
+       (fopen (token-splice filename) (token-splice flags)))
+     (if (token-splice file-pointer-name)
+         (scope
+          ;; We need defer in case the user returns out of this block etc.
+          (defer (fclose (token-splice file-pointer-name)))
+          (token-splice on-success-block))
+         (scope
+          (token-splice on-failure-block)))))
+  (return true))
+
 (ignore ;; For reference
  (defun-local test--load-save ()
    (scope

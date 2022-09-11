@@ -48,14 +48,20 @@
 
     (put 'defer 'lisp-indent-function 0)
 
+    (put 'set-fields 'lisp-indent-function 1)
+    (put 'var-cast-to 'lisp-indent-function 2)
+
+    (put 'if-open-file-scoped 'lisp-indent-function 3)
+
     ;; Keywords
     ;; "(def[a-zA-Z0-9-]*" all define keywords
 
     ;; Configuration, build stuff, etc.
-    (font-lock-add-keywords nil '(("(\\(add-build-config-label\\|add-build-options\\|add-build-options-global\\|add-c-build-dependency\\|add-c-search-directory-global\\|add-c-search-directory-module\\|add-cakelisp-search-directory\\|add-compile-time-hook\\|add-compile-time-hook-module\\|add-compiler-link-options\\|add-cpp-build-dependency\\|add-library-dependency\\|add-library-runtime-search-directory\\|add-library-search-directory\\|add-linker-options\\|add-static-link-objects\\|set-cakelisp-option\\|set-module-option\\|c-import\\|c-preprocessor-define\\|c-preprocessor-define-global\\|comptime-cond\\|comptime-define-symbol\\|comptime-error\\|import\\|rename-builtin\\|export\\|export-and-evaluate\\|splice-point\\|token-splice\\|token-splice-addr\\|token-splice-array\\|token-splice-rest\\|tokenize-push\\)[ )\n]"
+    (font-lock-add-keywords nil '(("(\\(add-build-config-label\\|add-build-options\\|add-build-options-global\\|add-c-build-dependency\\|add-c-search-directory-global\\|add-c-search-directory-module\\|add-cakelisp-search-directory\\|add-compile-time-hook\\|add-compile-time-hook-module\\|add-compiler-link-options\\|add-cpp-build-dependency\\|add-library-dependency\\|add-library-runtime-search-directory\\|add-library-search-directory\\|add-linker-options\\|add-static-link-objects\\|set-cakelisp-option\\|set-module-option\\|c-import\\|c-preprocessor-define\\|c-preprocessor-define-global\\|comptime-cond\\|comptime-define-symbol\\|comptime-error\\|import\\|rename-builtin\\|export\\|export-and-evaluate\\|splice-point\\|token-splice-rest\\|token-splice\\|token-splice-addr\\|token-splice-array\\|token-splice-rest\\|tokenize-push\\)[ )\n]"
                                    1 font-lock-builtin-face)))
 
-    (font-lock-add-keywords nil '(("\\b\\(true\\|false\\|null\\)\\b"
+    ;; This doesn't quite work, because two keywords in a row will not be highlighted. Example: (index any)
+    (font-lock-add-keywords nil '(("[^-]\\b\\(false\\|true\\|string\\|any\\|index\\|arg-index\\|symbol\\|array\\|null\\)\\b[^-]"
                                    1 font-lock-builtin-face)))
 
     (font-lock-add-keywords nil '(("(\\(addr\\|ref\\|template\\|and\\|array\\|at\\|bit-shift-<<\\|bit-shift->>\\|bit-and\\|bit-ones-complement\\|bit-or\\|bit-xor\\|call\\|call-on\\|call-on-ptr\\|decr\\|def-function-signature\\|def-function-signature-global\\|def-type-alias\\|def-type-alias-global\\|defgenerator\\|defmacro\\|defstruct\\|defstruct-local\\|defun\\|defun-comptime\\|defun-local\\|defun-nodecl\\|delete\\|delete-array\\|deref\\|eq\\|field\\|in\\|incr\\|mod\\|neq\\|new\\|new-array\\|not\\|nth\\|or\\|path\\|scope\\|defer\\|set\\|type\\|type-cast\\|var\\|var-global\\|var-static\\)[ )\n]"
