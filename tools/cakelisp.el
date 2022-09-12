@@ -56,10 +56,10 @@
     ;; Keywords
     ;; "(def[a-zA-Z0-9-]*" all define keywords
 
-    (font-lock-add-keywords nil '(("\\(defun\\|defun-local\\|defun-nodecl\\|defmacro\\|defgenerator\\|defun-comptime\\) \\([a-zA-Z-]*\\)"
+    (font-lock-add-keywords nil '(("\\(defun\\|defun-local\\|defun-nodecl\\|defmacro\\|defgenerator\\|defun-comptime\\) \\([a-z0-9A-Z-]*\\)"
                                    2 font-lock-function-name-face)))
 
-    (font-lock-add-keywords nil '(("\\(defstruct\\|defstruct-local\\|defstruct-local\\|defenum\\|def-function-signature\\|def-function-signature-global\\|def-type-alias\\|def-type-alias-global\\) \\([a-zA-Z-]*\\)"
+    (font-lock-add-keywords nil '(("\\(defstruct\\|defstruct-local\\|defstruct-local\\|defenum\\|def-function-signature\\|def-function-signature-global\\|def-type-alias\\|def-type-alias-global\\) \\([a-z0-9A-Z-]*\\)"
                                    2 font-lock-type-face)))
 
     ;; Configuration, build stuff, etc.
