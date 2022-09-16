@@ -786,9 +786,17 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 			if (firstArgIndex == -1)
 				return false;
 
+			int numArrayArguments = getNumArguments(tokens, startTokenIndex, endTokenIndex);
+			if (numArrayArguments > 3)
+			{
+				ErrorAtToken(tokens[getArgument(tokens, startTokenIndex, 3, endTokenIndex)],
+				             "Unexpected extra argument. The array type expects either the type or "
+				             "size and type.");
+				return false;
+			}
+
 			// Arrays must append their brackets after the name (must be in separate buffer)
-			bool arraySizeIsFirstArgument =
-			    getNumArguments(tokens, startTokenIndex, endTokenIndex) >= 3;
+			bool arraySizeIsFirstArgument = (numArrayArguments == 3);
 			int typeIndex = firstArgIndex;
 			if (arraySizeIsFirstArgument)
 			{
