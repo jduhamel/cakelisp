@@ -5,11 +5,11 @@
 (defun main (&return int)
   (return 0))
 
-(defun-comptime run-tests (manager (& ModuleManager) module (* Module) &return bool)
+(defun-comptime run-tests (manager (ref ModuleManager) module (addr Module) &return bool)
   (defstruct cakelisp-test
-    test-name (* (const char))
-    test-file (* (const char)))
-  (var tests ([] (const cakelisp-test))
+    test-name (addr (const char))
+    test-file (addr (const char)))
+  (var tests (array (const cakelisp-test))
     (array
      (array "Hello" "test/Hello.cake")
      (array "Macros" "test/SimpleMacros.cake")
@@ -26,7 +26,7 @@
      (array "Tutorial: Basics" "test/Tutorial_Basics.cake")
      (array "Defer" "test/Defer.cake")))
 
-  (var platform-config (* (const char))
+  (var platform-config (addr (const char))
     (comptime-cond
      ('Windows
       "runtime/Config_Windows.cake")
@@ -34,9 +34,9 @@
       "runtime/Config_Linux.cake")))
 
   (each-in-array tests i
-    (var test-name (* (const char)) (field (at i tests) test-name))
-    (var test-file (* (const char)) (field (at i tests) test-file))
-    (var files ([] (* (const char))) (array platform-config test-file))
+    (var test-name (addr (const char)) (field (at i tests) test-name))
+    (var test-file (addr (const char)) (field (at i tests) test-file))
+    (var files (array (addr (const char))) (array platform-config test-file))
     (Logf "\n===============\n%s\n\n" test-name)
     (unless (cakelisp-evaluate-build-execute-files files (array-size files))
       (Logf "error: test %s failed\n" test-name)
@@ -46,7 +46,7 @@
   ;; Special cases that don't yet fit into the standard test loop
   (scope
    (Logf "\n===============\n%s\n\n" "Hot reloadable library")
-   (var files ([] (* (const char)))
+   (var files (array (addr (const char)))
      (array platform-config "runtime/HotReloadingCodeModifier.cake" "runtime/TextAdventure.cake"))
    (unless (cakelisp-evaluate-build-files files (array-size files))
      (Logf "error: test %s failed\n" "Hot reloadable library")
@@ -55,7 +55,7 @@
 
   (scope
    (Logf "\n===============\n%s\n\n" "Hot loader")
-   (var files ([] (* (const char)))
+   (var files (array (addr (const char)))
      (array platform-config "runtime/HotLoader.cake"))
    (unless (cakelisp-evaluate-build-files files (array-size files))
      (Logf "error: test %s failed\n" "Hot loader")

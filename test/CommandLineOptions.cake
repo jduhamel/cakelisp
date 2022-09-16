@@ -23,15 +23,15 @@
   name-translation-format name-policy
   :help "How to format symbol names when converting lisp-style-names to c_style_names (example is underscores mode)"
 
-  working-directory (* (const char)) :help "Where to keep cached artifacts for partial builds"
-  include-directories (* (* (const char))) :help "Where to search for .cake files"
+  working-directory (addr (const char)) :help "Where to keep cached artifacts for partial builds"
+  include-directories (addr (addr (const char))) :help "Where to search for .cake files"
 
   ;; Compile-time options
-  compile-executable (* (const char)) :help "Path to a C++ compiler (for compile time code)"
-  compile-options (* (* (const char))) :help "Use {file} to denote the .cpp file being compiled (for compile time code)"
-  link-executable (* (const char))
+  compile-executable (addr (const char)) :help "Path to a C++ compiler (for compile time code)"
+  compile-options (addr (addr (const char))) :help "Use {file} to denote the .cpp file being compiled (for compile time code)"
+  link-executable (addr (const char))
   :help "Path to an executable capable of linking object (.o) files into dynamic libraries (for compile time code)"
-  link-options (* (* (const char))) :help "Use {file} to denote the .o file being linked (for compile time code)"
+  link-options (addr (addr (const char))) :help "Use {file} to denote the .o file being linked (for compile time code)"
 
   ;; Debugging
   verbose-files bool
@@ -40,7 +40,7 @@
 
 (defstruct cakelisp-map-options
   "Find the associated source tokens of the given generated file character position, or vice versa"
-  filename (* (const char)) :required
+  filename (addr (const char)) :required
   line int :help "Required if char-position is not provided"
   column int :help "Required if char-position is not provided"
   char-position int

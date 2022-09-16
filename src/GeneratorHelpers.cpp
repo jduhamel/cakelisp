@@ -742,10 +742,10 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 	{
 		// Some examples:
 		// (const int)
-		// (* (const char))
-		// (& (const (<> std::vector Token)))
-		// ([] (const char))
-		// ([] ([] 10 float)) ;; 2D Array with one specified dimension
+		// (addr (const char))
+		// (ref (const (template (in std vector) Token)))
+		// (array (const char))
+		// (array (array 10 float)) ;; 2D Array with one specified dimension
 
 		const Token& typeInvocation = tokens[startTokenIndex + 1];
 		if (!ExpectTokenType("C/C++ type parser generator", typeInvocation, TokenType_Symbol))
@@ -753,7 +753,7 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 
 		int endTokenIndex = FindCloseParenTokenIndex(tokens, startTokenIndex);
 
-		if (typeInvocation.contents.compare("*") == 0 || typeInvocation.contents.compare("&") == 0)
+		if (typeInvocation.contents.compare("addr") == 0 || typeInvocation.contents.compare("ref") == 0)
 		{
 			if (!ExpectNumArguments(tokens, startTokenIndex, endTokenIndex, 2))
 				return false;
@@ -768,58 +768,10 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 			                                      allowArray, typeOutput, afterNameOutput))
 				return false;
 
-			addStringOutput(typeOutput, typeInvocation.contents.c_str(), StringOutMod_None,
-			                &typeInvocation);
+			addStringOutput(typeOutput, typeInvocation.contents.compare("addr") == 0 ? "*" : "&",
+			                StringOutMod_None, &typeInvocation);
 		}
-		else if (typeInvocation.contents.compare("&&") == 0 ||
-		         typeInvocation.contents.compare("rval-ref-to") == 0)
-		{
-			if (!ExpectNumArguments(tokens, startTokenIndex, endTokenIndex, 2))
-				return false;
-
-			int typeIndex =
-			    getExpectedArgument("expected type", tokens, startTokenIndex, 1, endTokenIndex);
-			if (typeIndex == -1)
-				return false;
-
-			if (!tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
-			                                      allowArray, typeOutput, afterNameOutput))
-				return false;
-
-			addStringOutput(typeOutput, "&&", StringOutMod_None, &typeInvocation);
-		}
-		else if (typeInvocation.contents.compare("<>") == 0)
-		{
-			int typeIndex = getExpectedArgument("expected template name", tokens, startTokenIndex,
-			                                    1, endTokenIndex);
-			if (typeIndex == -1)
-				return false;
-
-			if (!tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
-			                                      allowArray, typeOutput, afterNameOutput))
-				return false;
-
-			addStringOutput(typeOutput, "<", StringOutMod_None, &typeInvocation);
-			for (int startTemplateParameter = getNextArgument(tokens, typeIndex, endTokenIndex);
-			     startTemplateParameter < endTokenIndex;
-			     startTemplateParameter =
-			         getNextArgument(tokens, startTemplateParameter, endTokenIndex))
-			{
-				// Override allowArray for subsequent parsing, because otherwise, the array args
-				// will be appended to the wrong buffer, and you cannot declare arrays in template
-				// parameters anyways (as far as I can tell)
-				if (!tokenizedCTypeToString_Recursive(
-				        environment, context, tokens, startTemplateParameter,
-				        /*allowArray=*/false, typeOutput, afterNameOutput))
-					return false;
-
-				if (!isLastArgument(tokens, startTemplateParameter, endTokenIndex))
-					addLangTokenOutput(typeOutput, StringOutMod_ListSeparator,
-					                   &tokens[startTemplateParameter]);
-			}
-			addStringOutput(typeOutput, ">", StringOutMod_None, &typeInvocation);
-		}
-		else if (typeInvocation.contents.compare("[]") == 0)
+		else if (typeInvocation.contents.compare("array") == 0)
 		{
 			if (!allowArray)
 			{
@@ -877,6 +829,33 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 			return tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
 			                                        allowArray, typeOutput, afterNameOutput);
 		}
+		else if (typeInvocation.contents.compare("const") == 0)
+		{
+			if (!ExpectNumArguments(tokens, startTokenIndex, endTokenIndex, 2))
+				return false;
+
+			int typeIndex =
+			    getExpectedArgument("expected type", tokens, startTokenIndex, 1, endTokenIndex);
+			if (typeIndex == -1)
+				return false;
+
+			// Annoyingly, pointer const-ness must be appended in our world
+			bool isConstPointer = tokens[typeIndex].type == TokenType_OpenParen &&
+			                      (tokens[typeIndex + 1].contents.compare("addr") == 0 ||
+			                       tokens[typeIndex + 1].contents.compare("ref") == 0);
+
+			if (!isConstPointer)
+				addStringOutput(typeOutput, typeInvocation.contents.c_str(), StringOutMod_SpaceAfter,
+				                &typeInvocation);
+
+			if (!tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
+			                                      allowArray, typeOutput, afterNameOutput))
+				return false;
+
+			if (isConstPointer)
+				addStringOutput(typeOutput, typeInvocation.contents.c_str(),
+				                StringOutMod_SpaceBefore, &typeInvocation);
+		}
 		else if (typeInvocation.contents.compare("in") == 0)
 		{
 			int firstScopeIndex =
@@ -899,7 +878,7 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 					addStringOutput(typeOutput, "::", StringOutMod_None, &tokens[startScopeIndex]);
 			}
 		}
-		else if (typeInvocation.contents.compare("const") == 0)
+		else if (typeInvocation.contents.compare("rval-ref-to") == 0)
 		{
 			if (!ExpectNumArguments(tokens, startTokenIndex, endTokenIndex, 2))
 				return false;
@@ -909,25 +888,66 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 			if (typeIndex == -1)
 				return false;
 
-			// Annoyingly, pointer const-ness must be appended in our world
-			bool isConstPointer = tokens[typeIndex].type == TokenType_OpenParen &&
-			                      (tokens[typeIndex + 1].contents.compare("*") == 0 ||
-			                       tokens[typeIndex + 1].contents.compare("&") == 0);
+			if (!tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
+			                                      allowArray, typeOutput, afterNameOutput))
+				return false;
 
-			if (!isConstPointer)
-				addStringOutput(typeOutput, typeInvocation.contents.c_str(), StringOutMod_SpaceAfter,
-				                &typeInvocation);
+			addStringOutput(typeOutput, "&&", StringOutMod_None, &typeInvocation);
+		}
+		else if (typeInvocation.contents.compare("template") == 0)
+		{
+			int typeIndex = getExpectedArgument("expected template name", tokens, startTokenIndex,
+			                                    1, endTokenIndex);
+			if (typeIndex == -1)
+				return false;
 
 			if (!tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
 			                                      allowArray, typeOutput, afterNameOutput))
 				return false;
 
-			if (isConstPointer)
-				addStringOutput(typeOutput, typeInvocation.contents.c_str(),
-				                StringOutMod_SpaceBefore, &typeInvocation);
+			addStringOutput(typeOutput, "<", StringOutMod_None, &typeInvocation);
+			for (int startTemplateParameter = getNextArgument(tokens, typeIndex, endTokenIndex);
+			     startTemplateParameter < endTokenIndex;
+			     startTemplateParameter =
+			         getNextArgument(tokens, startTemplateParameter, endTokenIndex))
+			{
+				// Override allowArray for subsequent parsing, because otherwise, the array args
+				// will be appended to the wrong buffer, and you cannot declare arrays in template
+				// parameters anyways (as far as I can tell)
+				if (!tokenizedCTypeToString_Recursive(
+				        environment, context, tokens, startTemplateParameter,
+				        /*allowArray=*/false, typeOutput, afterNameOutput))
+					return false;
+
+				if (!isLastArgument(tokens, startTemplateParameter, endTokenIndex))
+					addLangTokenOutput(typeOutput, StringOutMod_ListSeparator,
+					                   &tokens[startTemplateParameter]);
+			}
+			addStringOutput(typeOutput, ">", StringOutMod_None, &typeInvocation);
 		}
 		else
 		{
+			struct
+			{
+				const char* keyword;
+				const char* newKeyword;
+			} deprecatedTypes[] = {
+			    {"*", "addr"},         {"<>", "template"}, {"&", "ref"},
+			    {"&&", "rval-ref-to"}, {"[]", "array"},
+			};
+			for (unsigned int deprecatedTypeIndex = 0;
+			     deprecatedTypeIndex < ArraySize(deprecatedTypes); ++deprecatedTypeIndex)
+			{
+				if (typeInvocation.contents.compare(deprecatedTypes[deprecatedTypeIndex].keyword) ==
+				    0)
+				{
+					ErrorAtTokenf(tokens[startTokenIndex + 1], "%s is deprecated. Use %s instead.",
+					              deprecatedTypes[deprecatedTypeIndex].keyword,
+					              deprecatedTypes[deprecatedTypeIndex].newKeyword);
+					return false;
+				}
+			}
+
 			if (!ExpectNumArguments(tokens, startTokenIndex, endTokenIndex, 2))
 				return false;
 

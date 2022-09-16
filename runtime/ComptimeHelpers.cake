@@ -19,18 +19,18 @@
   ;; Convert type to parseable string as well as unique (to the type) function name
   (scope
    ;; For parsing
-   (var type-to-string-buffer ([] 256 char) (array 0))
-   (var type-string-write-head (* char) type-to-string-buffer)
+   (var type-to-string-buffer (array 256 char) (array 0))
+   (var type-string-write-head (addr char) type-to-string-buffer)
    ;; For function name
-   (var type-to-name-string-buffer ([] 256 char) (array 0))
-   (var type-name-string-write-head (* char) type-to-name-string-buffer)
+   (var type-to-name-string-buffer (array 256 char) (array 0))
+   (var type-name-string-write-head (addr char) type-to-name-string-buffer)
    (unless (writeStringToBufferErrorToken "destroy-"
                                           (addr type-name-string-write-head) type-to-name-string-buffer
                                           (sizeof type-to-name-string-buffer) var-type)
      (return false))
 
-   (var current-type-token (* (const Token)) (addr var-type))
-   (var end-type-token (* (const Token)) (FindTokenExpressionEnd current-type-token))
+   (var current-type-token (addr (const Token)) (addr var-type))
+   (var end-type-token (addr (const Token)) (FindTokenExpressionEnd current-type-token))
    (while (<= current-type-token end-type-token)
      (unless (appendTokenToString (deref current-type-token) (addr type-string-write-head)
                                   type-to-string-buffer (sizeof type-to-string-buffer))
@@ -72,7 +72,7 @@
      (incr current-type-token))
    (set (field var-type-str contents) type-to-string-buffer)
 
-   (var current-char (* char) type-to-name-string-buffer)
+   (var current-char (addr char) type-to-name-string-buffer)
    (while (!= (deref current-char) 0)
      (when (= (deref current-char) ':')
        (set (deref current-char) '-'))
@@ -85,18 +85,18 @@
   (var destroy-var-func-name-symbol Token destroy-var-func-name-str)
   (set (field destroy-var-func-name-symbol type) TokenType_Symbol)
 
-  (var destroy-func-name (* (const char))
+  (var destroy-func-name (addr (const char))
     (call-on c_str (field destroy-var-func-name-str contents)))
 
   ;; Define the destructor if one for this type isn't already defined
   (unless (or (findCompileTimeFunction environment destroy-func-name)
               (findObjectDefinition environment destroy-func-name))
-    (var destruction-func-def (* (<> std::vector Token)) (new (<> std::vector Token)))
+    (var destruction-func-def (addr (template (in std vector) Token)) (new (template (in std vector) Token)))
     ;; Need to have the environment delete this once it's safe
     (call-on push_back (field environment comptimeTokens) destruction-func-def)
     (tokenize-push (deref destruction-func-def)
-      (defun-comptime (token-splice-addr destroy-var-func-name-symbol) (data (* void))
-        (delete (type-cast data (* (token-splice-addr var-type))))))
+      (defun-comptime (token-splice-addr destroy-var-func-name-symbol) (data (addr void))
+        (delete (type-cast data (addr (token-splice-addr var-type))))))
 
     (var destruction-func-context EvaluatorContext context)
     ;; This doesn't cause the required to propagate because comptime functions are lazily required,
@@ -108,7 +108,7 @@
     ;; We are only outputting a compile-time function, which uses definition's output storage to be
     ;; built. This throwaway will essentially only have a splice to that output, so we don't really
     ;; need to keep track of it, except to destroy it once everything is done
-    (var throwaway-output (* GeneratorOutput) (new GeneratorOutput))
+    (var throwaway-output (addr GeneratorOutput) (new GeneratorOutput))
     (call-on push_back (field environment orphanedOutputs) throwaway-output)
     (unless (= 0 (EvaluateGenerate_Recursive environment
                                              destruction-func-context
@@ -116,7 +116,7 @@
                                              (deref throwaway-output)))
       (return false)))
 
-  (var initializer (<> std::vector Token))
+  (var initializer (template (in std vector) Token))
   (when (!= initializer-index -1)
     (tokenize-push initializer (set (deref (token-splice-addr bound-var-name))
                                     (token-splice-addr (at initializer-index tokens)))))
@@ -125,17 +125,17 @@
   ;; TODO: Any way to make this less code for each ref? There's a lot here.
   ;; Yes: Auto-generate construction function and call it instead of copy-pasting
   (tokenize-push output
-    (var (token-splice-addr bound-var-name) (* (token-splice-addr var-type)) null)
+    (var (token-splice-addr bound-var-name) (addr (token-splice-addr var-type)) null)
     (scope
      (unless (GetCompileTimeVariable environment
                                      (token-splice-addr var-name) (token-splice-addr var-type-str)
-                                     (type-cast (addr (token-splice-addr bound-var-name)) (* (* void))))
+                                     (type-cast (addr (token-splice-addr bound-var-name)) (addr (addr void))))
        (set (token-splice-addr bound-var-name) (new (token-splice-addr var-type)))
        (token-splice-array initializer)
-       (var destroy-func-name (* (const char)) (token-splice-addr destroy-var-func-name-str))
+       (var destroy-func-name (addr (const char)) (token-splice-addr destroy-var-func-name-str))
        (unless (CreateCompileTimeVariable environment
                                           (token-splice-addr var-name) (token-splice-addr var-type-str)
-                                          (type-cast (token-splice-addr bound-var-name) (* void))
+                                          (type-cast (token-splice-addr bound-var-name) (addr void))
                                           destroy-func-name)
          (delete (token-splice-addr bound-var-name))
          (return false)))))
@@ -153,7 +153,7 @@
 ;;   ;; Invocation is 0, so skip it
 ;;   (var num-destructured-args int 1)
 ;;   (while (< current-arg-index end-invocation-index)
-;;     (var current-arg (* (const Token)) (addr (at current-arg-index tokens)))
+;;     (var current-arg (addr (const Token)) (addr (at current-arg-index tokens)))
 ;;     (var num-destructured-args-token Token (array TokenType_Symbol (std::to_string num-destructured-args)
 ;;                                                   "test/ComptimeHelpers.cake" 1 1 1))
 ;;     (unless (ExpectTokenType "destructure-arguments" (at current-arg-index tokens) TokenType_Symbol)
@@ -176,7 +176,7 @@
 
 ;; Assumes tokens is the array of tokens
 (defmacro quick-token-at (name symbol index any)
-  (tokenize-push output (var (token-splice name) (& (const Token))
+  (tokenize-push output (var (token-splice name) (ref (const Token))
                           (at (token-splice index) tokens)))
   (return true))
 
@@ -237,7 +237,7 @@
 (defmacro token-contents-snprintf (token any format string &rest arguments any)
   (tokenize-push output
     (scope
-     (var token-contents-printf-buffer ([] 256 char) (array 0))
+     (var token-contents-printf-buffer (array 256 char) (array 0))
      (var num-printed size_t
        (snprintf token-contents-printf-buffer (sizeof token-contents-printf-buffer)
                  (token-splice format)

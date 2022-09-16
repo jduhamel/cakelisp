@@ -8,11 +8,11 @@
           &with-decls "<vector>")
 
 (defstruct room
-  name (* (const char))
-  description (* (const char))
-  connected-rooms (<> std::vector room))
+  name (addr (const char))
+  description (addr (const char))
+  connected-rooms (template (in std vector) room))
 
-(var rooms (const ([] room))
+(var rooms (const (array room))
      (array
       (array "front porch" "You're outside the front door of your home. The lights are off inside."
              (array (array
@@ -25,12 +25,12 @@
   (fprintf stderr "At any point, enter 'r' to reload the code, 'h' for help, or 'q' to quit\n")
   (fprintf stderr "Enter room number for desired room\n\n"))
 
-(defun print-room (room-to-print (* (const room)))
+(defun print-room (room-to-print (addr (const room)))
   (fprintf stderr "You are at: %s.\n%s\n"
           (path room-to-print > name)
           (path room-to-print > description))
   (var room-index int 0)
-  (for-in connected-room (& (const room)) (path room-to-print > connected-rooms)
+  (for-in connected-room (ref (const room)) (path room-to-print > connected-rooms)
           (fprintf stderr "%d: %s\n" room-index (field connected-room name))
           (incr room-index))
   (when (call-on empty (path room-to-print > connected-rooms))
@@ -41,14 +41,14 @@
   (fprintf stderr "CAKE ADVENTURE\n\n")
   (print-help)
 
-  (var current-room (* (const room)) (addr (at 0 rooms)))
+  (var current-room (addr (const room)) (addr (at 0 rooms)))
   (print-room current-room)
 
   (incr num-times-loaded)
   (fprintf stderr "Loaded %d times\n" num-times-loaded)
 
   (var input char 0)
-  (var previous-room (* (const room)) current-room)
+  (var previous-room (addr (const room)) current-room)
   (while (!= input 'q')
     (when (!= current-room previous-room)
       (set previous-room current-room)

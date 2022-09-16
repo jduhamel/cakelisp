@@ -6,7 +6,7 @@
 
   (def-function-signature reload-entry-point-signature (&return bool))
   (var hot-reload-entry-point-func reload-entry-point-signature null)
-  (register-function-pointer (type-cast (addr hot-reload-entry-point-func) (* (* void)))
+  (register-function-pointer (type-cast (addr hot-reload-entry-point-func) (addr (addr void)))
                              ;; TODO Support name conversion at runtime? (conversion requires tokens)
                              "reloadableEntryPoint")
 

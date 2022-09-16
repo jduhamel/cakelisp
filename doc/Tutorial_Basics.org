@@ -123,7 +123,7 @@ Modify our ~main~ function to take command-line arguments:
 
 #+BEGIN_SRC lisp
   (defun main (num-arguments int
-               arguments ([] (* char))
+               arguments (array (addr char))
                &return int)
     (unless (= 2 num-arguments)
       (fprintf stderr "Expected command argument\n")
@@ -187,7 +187,7 @@ Invoke the macro in ~main~:
 
 #+BEGIN_SRC lisp
   (defun main (num-arguments int
-               arguments ([] (* char))
+               arguments (array (addr char))
                &return int)
     (unless (= 2 num-arguments)
       (fprintf stderr "Expected command argument\n")
@@ -302,7 +302,7 @@ Let's create our lookup list. We'll use a C++ ~std::vector~, as it is common in 
 #+BEGIN_SRC lisp
   (defmacro defcommand (command-name symbol arguments array &rest body any)
 
-    (get-or-create-comptime-var command-table (<> (in std vector) (* (const Token))))
+    (get-or-create-comptime-var command-table (template (in std vector) (addr (const Token))))
     (call-on-ptr push_back command-table command-name)
 
     (tokenize-push output
@@ -343,7 +343,7 @@ We attach the compile-time function to compile-time hooks, or call from macros o
 It's time to create a compile-time function which will create our runtime command look-up table.
 
 #+BEGIN_SRC lisp
-  (defun-comptime create-command-lookup-table (environment (& EvaluatorEnvironment) &return bool)
+  (defun-comptime create-command-lookup-table (environment (ref EvaluatorEnvironment) &return bool)
     (return true))
 
   (add-compile-time-hook post-references-resolved
@@ -355,7 +355,7 @@ Each hook has a pre-defined signature, which is what the ~environment~ and other
 From our previous note on ~post-references-resolved~ we learned that our hook can be invoked multiple times. Let's store a comptime var to prevent it from being called more than once:
 
 #+BEGIN_SRC lisp
-  (defun-comptime create-command-lookup-table (environment (& EvaluatorEnvironment) &return bool)
+  (defun-comptime create-command-lookup-table (environment (ref EvaluatorEnvironment) &return bool)
     (get-or-create-comptime-var command-table-already-created bool false)
     (when (deref command-table-already-created)
       (return true))
@@ -370,14 +370,14 @@ Our compile-time function is now hooked up and running when all references are r
 Let's get our command table and make a loop to iterate over it, printing each command:
 
 #+BEGIN_SRC lisp
-  (defun-comptime create-command-lookup-table (environment (& EvaluatorEnvironment) &return bool)
+  (defun-comptime create-command-lookup-table (environment (ref EvaluatorEnvironment) &return bool)
     (get-or-create-comptime-var command-table-already-created bool false)
     (when (deref command-table-already-created)
       (return true))
     (set (deref command-table-already-created) true)
 
-    (get-or-create-comptime-var command-table (<> (in std vector) (* (const Token))))
-    (for-in command-name (* (const Token)) (deref command-table)
+    (get-or-create-comptime-var command-table (template (in std vector) (addr (const Token))))
+    (for-in command-name (addr (const Token)) (deref command-table)
       (printFormattedToken stderr (deref command-name))
       (fprintf stderr "\n"))
     (return true))
@@ -404,7 +404,7 @@ To do this, we will generate a new array of Tokens and tell Cakelisp to evaluate
 We need to create the Token array such that it can always be referred back to in case there are errors. We do this by making sure to allocate it on the heap so that it does not go away on function return or scope exit:
 
 #+BEGIN_SRC lisp
-  (var command-data (* (<> std::vector Token)) (new (<> std::vector Token)))
+  (var command-data (addr (template (in std vector) Token)) (new (template (in std vector) Token)))
   (call-on push_back (field environment comptimeTokens) command-data)
 #+END_SRC
 
@@ -439,18 +439,18 @@ We use ~token-splice-addr~ because ~command-name-string~ is a ~Token~, not a /po
 Let's output the generated command data to the console to make sure it's good. Here's the full ~create-command-lookup-table~ so far:
 
 #+BEGIN_SRC lisp
-  (defun-comptime create-command-lookup-table (environment (& EvaluatorEnvironment) &return bool)
+  (defun-comptime create-command-lookup-table (environment (ref EvaluatorEnvironment) &return bool)
     (get-or-create-comptime-var command-table-already-created bool false)
     (when (deref command-table-already-created)
       (return true))
     (set (deref command-table-already-created) true)
 
-    (get-or-create-comptime-var command-table (<> (in std vector) (* (const Token))))
+    (get-or-create-comptime-var command-table (template (in std vector) (addr (const Token))))
 
-    (var command-data (* (<> std::vector Token)) (new (<> std::vector Token)))
+    (var command-data (addr (template (in std vector) Token)) (new (template (in std vector) Token)))
     (call-on push_back (field environment comptimeTokens) command-data)
 
-    (for-in command-name (* (const Token)) (deref command-table)
+    (for-in command-name (addr (const Token)) (deref command-table)
       (printFormattedToken stderr (deref command-name))
       (fprintf stderr "\n")
 
@@ -485,18 +485,18 @@ Add this before ~main~:
   (def-function-signature command-function ())
 
   (defstruct-local command-metadata
-    name (* (const char))
+    name (addr (const char))
     command command-function)
 #+END_SRC
 
 Now the runtime knows what the layout of the data is. In ~create-command-lookup-table~, let's generate another array of tokens to hold the runtime lookup table variable:
 
 #+BEGIN_SRC lisp
-  (var command-table-tokens (* (<> std::vector Token)) (new (<> std::vector Token)))
+  (var command-table-tokens (addr (template (in std vector) Token)) (new (template (in std vector) Token)))
   (call-on push_back (field environment comptimeTokens) command-table-tokens)
 
   (tokenize-push (deref command-table-tokens)
-    (var command-table ([] command-metadata)
+    (var command-table (array command-metadata)
       (array (token-splice-array (deref command-data)))))
 
   (prettyPrintTokens (deref command-table-tokens))
@@ -511,7 +511,7 @@ We now get:
 #+BEGIN_SRC output
   say-your-name
   (array "say-your-name" say-your-name)
-  (var command-table ([] command-metadata)
+  (var command-table (array command-metadata)
     (array (array "say-your-name" say-your-name)))
   Successfully built and linked a.out
   Hello, Cakelisp!
@@ -559,7 +559,7 @@ And check the output:
 #+BEGIN_SRC output
   say-your-name
   (array "say-your-name" say-your-name)
-  (var command-table ([] command-metadata)
+  (var command-table (array command-metadata)
     (array (array "say-your-name" say-your-name)))
   Successfully built and linked a.out
   Available commands:
@@ -601,7 +601,7 @@ Building only:
   > ./bin/cakelisp test/Tutorial_Basics.cake
     say-your-name
     (array "say-your-name" say-your-name)
-    (var command-table ([] command-metadata)
+    (var command-table (array command-metadata)
       (array (array "say-your-name" say-your-name)))
     Successfully built and linked a.out
 #+END_SRC

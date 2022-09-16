@@ -3067,7 +3067,6 @@ bool CStatementGenerator(EvaluatorEnvironment& environment, const EvaluatorConte
 	    // Alias of block, in case you want to be explicit. For example, creating a scope to reduce
 	    // scope of variables vs. creating a block to have more than one statement in an (if) body
 	    {"scope", blockStatement, ArraySize(blockStatement), RequiredFeature_None},
-	    {"block", blockStatement, ArraySize(blockStatement), RequiredFeature_None},
 	    {"?", ternaryOperatorStatement, ArraySize(ternaryOperatorStatement), RequiredFeature_None},
 	    {"new", newStatement, ArraySize(newStatement), RequiredFeature_CppInDefinition},
 	    {"delete", deleteStatement, ArraySize(deleteStatement), RequiredFeature_CppInDefinition},
@@ -3093,12 +3092,10 @@ bool CStatementGenerator(EvaluatorEnvironment& environment, const EvaluatorConte
 	    {"bit-and", bitwiseAnd, ArraySize(bitwiseAnd), RequiredFeature_None},
 	    {"bit-xor", bitwiseXOr, ArraySize(bitwiseXOr), RequiredFeature_None},
 	    {"bit-ones-complement", bitwiseOnesComplement, ArraySize(bitwiseOnesComplement), RequiredFeature_None},
-	    {"bit-<<", bitwiseLeftShift, ArraySize(bitwiseLeftShift), RequiredFeature_None},
-	    {"bit->>", bitwiseRightShift, ArraySize(bitwiseRightShift), RequiredFeature_None},
+	    {"bit-shift-<<", bitwiseLeftShift, ArraySize(bitwiseLeftShift), RequiredFeature_None},
+	    {"bit-shift->>", bitwiseRightShift, ArraySize(bitwiseRightShift), RequiredFeature_None},
 	    {"=", relationalEquality, ArraySize(relationalEquality), RequiredFeature_None},
 	    {"!=", relationalNotEqual, ArraySize(relationalNotEqual), RequiredFeature_None},
-	    // {"eq", relationalEquality, ArraySize(relationalEquality), RequiredFeature_None},
-	    // {"neq", relationalNotEqual, ArraySize(relationalNotEqual), RequiredFeature_None},
 	    {"<=", relationalLessThanEqual, ArraySize(relationalLessThanEqual), RequiredFeature_None},
 	    {">=", relationalGreaterThanEqual, ArraySize(relationalGreaterThanEqual), RequiredFeature_None},
 	    {"<", relationalLessThan, ArraySize(relationalLessThan), RequiredFeature_None},
@@ -3108,10 +3105,7 @@ bool CStatementGenerator(EvaluatorEnvironment& environment, const EvaluatorConte
 	    {"-", subtract, ArraySize(subtract), RequiredFeature_None},
 	    {"*", multiply, ArraySize(multiply), RequiredFeature_None},
 	    {"/", divide, ArraySize(divide), RequiredFeature_None},
-	    {"%", modulus, ArraySize(modulus), RequiredFeature_None},
 	    {"mod", modulus, ArraySize(modulus), RequiredFeature_None},
-	    {"++", increment, ArraySize(increment), RequiredFeature_None},
-	    {"--", decrement, ArraySize(decrement), RequiredFeature_None},
 	    {"incr", increment, ArraySize(increment), RequiredFeature_None},
 	    {"decr", decrement, ArraySize(decrement), RequiredFeature_None},
 	};
@@ -3285,20 +3279,35 @@ void importFundamentalGenerators(EvaluatorEnvironment& environment)
 	    // Boolean
 	    "or", "and", "not",
 	    // Bitwise
-	    "bit-or", "bit-and", "bit-xor", "bit-ones-complement", "bit-<<", "bit->>",
+	    "bit-or", "bit-and", "bit-xor", "bit-ones-complement", "bit-shift-<<", "bit-shift->>",
 	    // Relational
 	    "=", "!=", /*"eq", "neq",*/ "<=", ">=", "<", ">",
 	    // Arithmetic
-	    "+", "-", "*", "/", "%", "mod", "++", "--", "incr", "decr"};
+	    "+", "-", "*", "/", "%", "mod", "incr", "decr"};
 	for (size_t i = 0; i < ArraySize(cStatementKeywords); ++i)
 	{
 		environment.generators[cStatementKeywords[i]] = CStatementGenerator;
 	}
 
-	// Deprecated
-	s_deprecatedHelpStrings["block"] = "use (scope) instead";
-	environment.generators["block"] = DeprecatedGenerator;
+	struct DeprecatedData
+	{
+		const char* keyword;
+		const char* replacementPrompt;
+	};
+	static const DeprecatedData deprecatedGenerators[] = {
+	    {"block", "use (scope) instead"},
+	    {"nth", "use (at) instead"},
+		{"bit-<<", "use (bit-shift-<<) instead"},
+		{"bit->>", "use (bit-shift->>) instead"},
+		{"%", "use (mod) instead"},
+		{"++", "use (incr) instead"},
+		{"--", "use (decr) instead"},
+	};
 
-	s_deprecatedHelpStrings["nth"] = "use (at) instead";
-	environment.generators["nth"] = DeprecatedGenerator;
+	for (unsigned int i = 0; i < ArraySize(deprecatedGenerators); ++i)
+	{
+		s_deprecatedHelpStrings[deprecatedGenerators[i].keyword] =
+		    deprecatedGenerators[i].replacementPrompt;
+		environment.generators[deprecatedGenerators[i].keyword] = DeprecatedGenerator;
+	}
 }

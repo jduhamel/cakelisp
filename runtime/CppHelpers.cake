@@ -16,7 +16,7 @@
    (findObjectDefinition environment (call-on c_str (path context . definitionName > contents)))
    RequiredFeature_CppInDefinition name)
 
-  (var constructor-var-statement (const ([] CStatementOperation))
+  (var constructor-var-statement (const (array CStatementOperation))
     (array
      (array TypeNoArray null type)
      (array Keyword " " -1)
@@ -42,7 +42,7 @@
    RequiredFeature_Cpp name)
 
   ;; Class declaration
-  (var class-declaration-output (& (<> (in std vector) StringOutput))
+  (var class-declaration-output (ref (template (in std vector) StringOutput))
     (? is-local (field output source) (field output header)))
   (addStringOutput class-declaration-output "class" StringOutMod_SpaceAfter name)
   (addStringOutput class-declaration-output (path name > contents)
@@ -52,9 +52,9 @@
   ;; Body of class
   (var end-invocation-index int (FindCloseParenTokenIndex tokens startTokenIndex))
   (var current-index int class-body)
-  ;; (var member-variables (<> (in std vector) Token) )
+  ;; (var member-variables (template (in std vector) Token) )
   (while (< current-index end-invocation-index)
-    (var current-token (& (const Token)) (at current-index tokens))
+    (var current-token (ref (const Token)) (at current-index tokens))
     (cond
       ;; Symbols in class bodies always denote a data member declaration
       ((= TokenType_Symbol (field current-token type))

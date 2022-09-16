@@ -51,7 +51,7 @@ This also means that adding Cakelisp to an existing C/C++ project should be virt
 
 Here are some example imports:
 #+BEGIN_SRC lisp
-(c-import "<vector>") ;; now just e.g. (var my-vec (<> std::vector int) (array 1 2 3))
+(c-import "<vector>") ;; now just e.g. (var my-vec (template (in std vector) int) (array 1 2 3))
 (c-import "<cstdio.h>") ;; (fprintf stderr "Hello %s!\n" "Cakelisp")
 (c-import "MyHeader.hpp") ;; (call-on updateState myGlobalVar 0.016)
 
@@ -73,21 +73,20 @@ By default, ~&with-defs~ is specified.
 You shouldn't expect Cakelisp features to work with external C/C++ code. Features like hot-reloading or introspection aren't available to external code because Cakelisp does not parse any C/C++ headers. This doesn't mean you cannot call C/C++ code from a hot-reloaded Cakelisp function, it just means you cannot magically hot-reload the C/C++ code you're calling.
 * Types
 Types are identical to types in C, but specified in an S-expression notation. Here are some example C++ types and their corresponding Cakelisp:
-| C/C++                        | Cakelisp                            |
-|------------------------------+-------------------------------------|
-| ~int~                        | ~int~                               |
-| ~int*~                       | ~(* int)~                           |
-| ~const int*~                 | ~(* (const int))~                   |
-| ~const int* const~           | ~(const (* (const int)))~           |
-| ~int x[]~                    | ~([] int)~                          |
-| ~int x[5]~                   | ~([] 5 int)~                        |
-| ~int x[4][4]~                | ~([] 4 ([] 4 int))~                 |
-| ~int x[][4]~                 | ~([] ([] 4 int))~                   |
-| ~std::vector<int>~           | ~(<> std::vector int)~              |
-| ~std::map<std::string, int>~ | ~(<> std::map (in std string) int)~ |
-| ~int&~                       | ~(& int)~                           |
-| ~int&&~                      | ~(&& int)~                          |
-| ~int&&~                      | ~(rval-ref-to int)~                 |
+| C/C++                        | Cakelisp                                      |
+|------------------------------+-----------------------------------------------|
+| ~int~                        | ~int~                                         |
+| ~int*~                       | ~(addr int)~                                  |
+| ~const int*~                 | ~(addr (const int))~                          |
+| ~const int* const~           | ~(const (addr (const int)))~                  |
+| ~int x[]~                    | ~(array int)~                                 |
+| ~int x[5]~                   | ~(array 5 int)~                               |
+| ~int x[4][4]~                | ~(array 4 (array 4 int))~                     |
+| ~int x[][4]~                 | ~(array (array 4 int))~                       |
+| ~std::vector<int>~           | ~(template (in std vector) int)~              |
+| ~std::map<std::string, int>~ | ~(template (in std map) (in std string) int)~ |
+| ~int&~                       | ~(ref int)~                                   |
+| ~int&&~                      | ~(rval-ref-to int)~                           |
 
 Note that C++ scope resolution operator can be used or ~in~ can be used. The latter is preferable.
 
@@ -95,7 +94,7 @@ While this is more verbose than C types, they are much more easily parsed and co
 
 To read C types properly, you must [[http://unixwiz.net/techtips/reading-cdecl.html][work backwards from the name]] and apply several heuristics. The parentheses do add more typing, but they're more clear, machine-parseable, and can be read naturally (e.g. read left to right "pointer to constant character" vs. C's "constant character pointer", which seems worse in my mind).
 
-This form also handles arrays as part of the type: ~(var my-array ([] 5 int))~ rather than ~int myArray[5];~, another way it is more consistent, readable, and parsable.
+This form also handles arrays as part of the type: ~(var my-array (array 5 int))~ rather than ~int myArray[5];~, another way it is more consistent, readable, and parsable.
 
 You can use any C/C++ keywords like ~volatile~, ~unsigned~, ~struct~, etc. in the same way that ~const~ is demonstrated above.
 * Functions
@@ -153,20 +152,20 @@ Use ~set~ to modify variables:
 
 Arrays have the same syntactic sugar as C, e.g.:
 #+BEGIN_SRC C
-(var my-numbers ([] int) (array 1 2 3))
+(var my-numbers (array int) (array 1 2 3))
 #+END_SRC
 ...is a better way than
 #+BEGIN_SRC C
-(var my-numbers ([] 3 int) (array 1 2 3))
+(var my-numbers (array 3 int) (array 1 2 3))
 #+END_SRC
 ...because the compiler will automatically determine the size.
 * Type aliases
 Aliases can be created for types. Internally, this uses ~typedef~. For example:
 #+BEGIN_SRC lisp
 ;; This will save us a lot of typing!
-(def-type-alias FunctionReferenceArray (<> std::vector (* (* void))))
+(def-type-alias FunctionReferenceArray (template (in std vector) (addr (addr void))))
 ;; Build on it!
-(def-type-alias FunctionReferenceMap (<> std::unordered_map std::string FunctionReferenceArray))
+(def-type-alias FunctionReferenceMap (template (in std unordered_map) (in std string) FunctionReferenceArray))
 ;; Declare a variable using our typedef
 (var registered-functions FunctionReferenceMap)
 #+END_SRC
@@ -181,7 +180,7 @@ The syntax for function pointers is shown in [[file:../runtime/HotLoader.cake][H
   (var hot-reload-entry-point-func reload-entry-point-signature null)
 
   ;; An example of a function which takes any type of function pointer, hence the cast
-  (register-function-pointer (type-cast (addr hot-reload-entry-point-func) (* (* void)))
+  (register-function-pointer (type-cast (addr hot-reload-entry-point-func) (addr (addr void)))
                              "reloadableEntryPoint")
 #+END_SRC
 
@@ -193,7 +192,7 @@ The syntax for function pointers is shown in [[file:../runtime/HotLoader.cake][H
 If you wanted to define a function pointer which could point to ~int main(int numArguments, char* arguments[])~, for example:
  #+BEGIN_SRC lisp
    (def-function-signature main-signature (num-arguments int
-                                           arguments ([] (* char))
+                                           arguments (array (addr char))
                                            &return int))
    (var main-pointer main-signature (addr main))
 #+END_SRC
@@ -213,22 +212,22 @@ Use the argument ~--list-built-ins~ to see an up-to-date list of all possible ex
 - ~cond~
 - ~when~:
 - ~unless~:
-- ~array~: Used for initializer lists, e.g. ~(var my-array ([] int) (array 1 2 3))~. Without arguments, equals the default initializer, e.g. ~(array)~ becomes ~{}~ in generated code
+- ~array~: Used for initializer lists, e.g. ~(var my-array (array int) (array 1 2 3))~. Without arguments, equals the default initializer, e.g. ~(array)~ becomes ~{}~ in generated code
 - ~set~: Sets a variable to a value, e.g. ~(set my-var 5)~ sets ~(var my-var int)~ to ~5~
 - ~block~: Defines a scope, where variables declared within it are limited to that scope
 - ~scope~: Alias of block, in case you want to be explicit. For example, creating a scope to reduce scope of variables vs. creating a block to have more than one statement in an ~(if)~ body
 - ~?~: Ternary operator. For example, the expression ~(? true 1 2)~ will return 1, whereas ~(? false 1 2)~ returns 2. Handy for when you don't want to use a full ~if~ statement, for example
 ** Pointers, members
-- ~new~: Calls C++ ~new~ with the given type, e.g. ~(new (* char))~ will allocate memory for a pointer to a character
+- ~new~: Calls C++ ~new~ with the given type, e.g. ~(new (addr char))~ will allocate memory for a pointer to a character
 - ~deref~: Return the value at the pointer's address
 - ~addr~: Take the address of a variable/member
 - ~field~: Access a struct/class member. For example, with struct ~(defstruct my-struct num int)~, and variable ~(var my-thing my-struct)~, access ~num~: ~(field my-thing num)~
 - ~path~: Access fields from struct addresses. For example, ~(path my-struct-ptr > num)~. You can nest these and access non-pointer fields as well, e.g. ~(path my-struct . ptr-field > another-struct . field)~. Path removes the need to do e.g. ~(field (deref my-struct-ptr) num)~, which can become hard to read with deep accessing.
 - ~call-on~: Call a member function. For example, if I have a variable ~my-bar~ of type ~Bar~ with member function ~do-thing~, I can call it like so: ~(call-on do-thing my-bar arg-1 arg-2)~
-- ~call-on-ptr~: Like ~call-on~, only it works on pointers, e.g. ~(var my-pointer-to-bar (* Bar) (addr a-bar))~, call its member: ~(call-on-ptr do-thing my-pointer-to-bar arg-1 arg-2)~. These can be nested as necessary
+- ~call-on-ptr~: Like ~call-on~, only it works on pointers, e.g. ~(var my-pointer-to-bar (addr Bar) (addr a-bar))~, call its member: ~(call-on-ptr do-thing my-pointer-to-bar arg-1 arg-2)~. These can be nested as necessary
 - ~call~: Call the first argument as a function. This is necessary when you can't type the function's name directly, e.g. it is a function pointer. For example, to call a static member function: ~(call (in my-class do-static-thing) arg-1 arg-2)~
 - ~in~: Scope resolution operator (~::~). Used for both namespaces and static member access. For e.g. ~(in SuperSpace SubSpace Thing)~ would generate ~SuperSpace::SubSpace::Thing~. ~in~ may be used within type signatures
-- ~type-cast~: Cast the variable to given type, e.g. ~(var actually-int (* void) (get-stored-var-pointer "my-int"))~ could become an int via ~(type-cast actually-int (* int))~
+- ~type-cast~: Cast the variable to given type, e.g. ~(var actually-int (addr void) (get-stored-var-pointer "my-int"))~ could become an int via ~(type-cast actually-int (addr int))~
 - ~type~: Parse the first argument as a type. Types are a domain-specific language, so the evaluator needs to know when it should use that special evaluation mode
 ** Logical expressions
 - ~not~: Inverts the boolean result of the argument. ~(not true)~ equals ~false~
@@ -323,7 +322,7 @@ The binding would result like so:
 
 We could output a variable declaration like so:
 #+BEGIN_SRC lisp
-  (var (<> std::vector Token) initializer)
+  (var (template (in std vector) Token) initializer)
   (when (!= -1 initializer-index)
     (tokenize-push initializer (token-splice-addr (at initializer-index tokens))))
   (tokenize-push output
@@ -345,7 +344,7 @@ Macros must return ~true~ or ~false~ to denote whether the expansion was success
 *** ~tokenize-push~
 ~tokenize-push~ is the main "quoting" function. The first argument is the output variable. ~output~ is passed in to ~defmacro~ automatically, but you can define other token arrays like so:
 #+BEGIN_SRC lisp
-  (var my-tokens (<> std::vector Token))
+  (var my-tokens (template (in std vector) Token))
 #+END_SRC
 
 ~tokenize-push~ copies all source tokens directly to the output until it reaches one of the ~token*~ functions. These functions tell the tokenizer to unpack and insert the tokens in the variables rather than the symbol which is the variable name. Unless otherwise specified, these take any number of arguments:
@@ -484,9 +483,9 @@ This configuration label ensures Cakelisp itself doesn't get affected by your ru
 There may be cases when you need to do complex logic or modifications of the link command. We use a ~hook~ to give us a chance to do so.
 
 #+BEGIN_SRC lisp
-(defun-comptime cakelisp-link-hook (manager (& ModuleManager)
-                                    linkCommand (& ProcessCommand)
-                                    linkTimeInputs (* ProcessCommandInput) numLinkTimeInputs int
+(defun-comptime cakelisp-link-hook (manager (ref ModuleManager)
+                                    linkCommand (ref ProcessCommand)
+                                    linkTimeInputs (addr ProcessCommandInput) numLinkTimeInputs int
                                     &return bool)
   (Log "Cakelisp: Adding link arguments\n")
   ;; Dynamic loading

@@ -12,29 +12,29 @@
 ;; Function management
 ;;
 
-(def-type-alias FunctionReferenceArray (<> std::vector (* (* void))))
-(def-type-alias FunctionReferenceMap (<> std::unordered_map std::string FunctionReferenceArray))
+(def-type-alias FunctionReferenceArray (template (in std vector) (addr (addr void))))
+(def-type-alias FunctionReferenceMap (template (in std unordered_map) (in std string) FunctionReferenceArray))
 (def-type-alias FunctionReferenceMapIterator (in FunctionReferenceMap iterator))
-(def-type-alias FunctionReferenceMapPair (<> std::pair (const std::string) FunctionReferenceArray))
+(def-type-alias FunctionReferenceMapPair (template (in std pair) (const (in std string)) FunctionReferenceArray))
 
 (var registered-functions FunctionReferenceMap)
 
 (var current-lib DynamicLibHandle null)
 (comptime-cond
  ('Unix
-  (var hot-reload-lib-path (* (const char)) "libGeneratedCakelisp.so")
+  (var hot-reload-lib-path (addr (const char)) "libGeneratedCakelisp.so")
   ;; Not used on Unix due to more advanced versioning required to avoid caching issues
-  (var hot-reload-active-lib-path (* (const char)) "libGeneratedCakelisp_Active.so"))
+  (var hot-reload-active-lib-path (addr (const char)) "libGeneratedCakelisp_Active.so"))
  ('Windows
-  (var hot-reload-lib-path (* (const char)) "libGeneratedCakelisp.dll")
+  (var hot-reload-lib-path (addr (const char)) "libGeneratedCakelisp.dll")
   ;; Need to copy it so the programmer can modify the other file while we're running this one
-  (var hot-reload-active-lib-path (* (const char)) "libGeneratedCakelisp_Active.dll")))
+  (var hot-reload-active-lib-path (addr (const char)) "libGeneratedCakelisp_Active.dll")))
 
 ;; This is incremented each time a reload occurs, to avoid caching problems on Linux
 (var hot-reload-lib-version-number int 0)
 
-(defun register-function-pointer (function-pointer (* (* void))
-                                  function-name (* (const char)))
+(defun register-function-pointer (function-pointer (addr (addr void))
+                                  function-name (addr (const char)))
   (var findIt FunctionReferenceMapIterator
        (call-on find registered-functions function-name))
   (if (= findIt (call-on end registered-functions))
@@ -47,17 +47,17 @@
             (call (in std move) new-function-pointer-array)))
       (call-on push_back (path findIt > second) function-pointer)))
 
-(defun-local copy-binary-file-to (srcFilename (* (const char))
-                                  destFilename (* (const char)) &return bool)
+(defun-local copy-binary-file-to (srcFilename (addr (const char))
+                                  destFilename (addr (const char)) &return bool)
 	;; Note: man 3 fopen says "b" is unnecessary on Linux, but I'll keep it anyways
-	(var srcFile (* FILE) (fopen srcFilename "rb"))
-	(var destFile (* FILE) (fopen destFilename "wb"))
+	(var srcFile (addr FILE) (fopen srcFilename "rb"))
+	(var destFile (addr FILE) (fopen destFilename "wb"))
 	(when (or (not srcFile) (not destFile))
 		(perror "fopen: ")
 		(fprintf stderr "error: failed to copy %s to %s\n" srcFilename destFilename)
 		(return false))
 
-	(var buffer ([] 4096 char))
+	(var buffer (array 4096 char))
 	(var totalCopied size_t 0)
 	(var numRead size_t (fread buffer (sizeof (at 0 buffer)) (array-size buffer) srcFile))
 	(while numRead
@@ -82,7 +82,7 @@
     ;; We need to use a new temporary file each time we do a reload, otherwise mmap/cache issues segfault
     ;; See https://bugzilla.redhat.com/show_bug.cgi?id=1327623
     (scope ;; Clean up the old version, so they don't stack up and eat all the disk space
-     (var prev-library-name ([] 256 char) (array 0))
+     (var prev-library-name (array 256 char) (array 0))
      (snprintf prev-library-name (sizeof prev-library-name) "libHotReloadingTemp_%d.so"
                hot-reload-lib-version-number)
      (when (!= -1 (access prev-library-name F_OK))
@@ -90,7 +90,7 @@
 
     ;; Must be a unique filename, else the caching will bite us
     (incr hot-reload-lib-version-number)
-    (var temp-library-name ([] 256 char) (array 0))
+    (var temp-library-name (array 256 char) (array 0))
     (snprintf temp-library-name (sizeof temp-library-name) "libHotReloadingTemp_%d.so"
               hot-reload-lib-version-number)
     (unless (copy-binary-file-to hot-reload-lib-path temp-library-name)
@@ -108,7 +108,7 @@
     (return false))
 
   ;; Intialize variables
-  (var global-initializer (* void)
+  (var global-initializer (addr void)
        (dynamic-library-get-symbol current-lib "hotReloadInitializeState"))
   (if global-initializer
       (scope
@@ -116,14 +116,14 @@
        (call (type-cast global-initializer global-initializer-signature)))
       (fprintf stderr "warning: global initializer 'hotReloadInitializeState' not found!"))
 
-  (for-in function-referent-it (& FunctionReferenceMapPair) registered-functions
-          (var loaded-symbol (* void)
+  (for-in function-referent-it (ref FunctionReferenceMapPair) registered-functions
+          (var loaded-symbol (addr void)
                (dynamic-library-get-symbol current-lib
                                            (call-on c_str (path function-referent-it . first))))
           (unless loaded-symbol
             (return false))
           ;; TODO: What will happen once modules are unloaded? We can't store pointers to their static memory
-          (for-in function-pointer (* (* void)) (path function-referent-it . second)
+          (for-in function-pointer (addr (addr void)) (path function-referent-it . second)
                   (set (deref function-pointer) loaded-symbol)))
   (return true))
 
@@ -134,13 +134,13 @@
 ;; Data/state management
 ;;
 
-(def-type-alias StateVariableMap (<> std::unordered_map std::string (* void)))
+(def-type-alias StateVariableMap (template (in std unordered_map) (in std string) (addr void)))
 (def-type-alias StateVariableMapIterator (in StateVariableMap iterator))
 
 (var registered-state-variables StateVariableMap)
 (var verbose-variables bool false)
 
-(defun hot-reload-find-variable (name (* (const char)) variable-address-out (* (* void)) &return bool)
+(defun hot-reload-find-variable (name (addr (const char)) variable-address-out (addr (addr void)) &return bool)
   (var find-it StateVariableMapIterator (call-on find registered-state-variables name))
   (unless (!= find-it (call-on end registered-state-variables))
     (set variable-address-out nullptr)
@@ -153,7 +153,7 @@
   (return true))
 
 ;; TODO: Free variables. They'll need generated destructors for C++ types (see compile-time vars)
-(defun hot-reload-register-variable (name (* (const char)) variable-address (* void))
+(defun hot-reload-register-variable (name (addr (const char)) variable-address (addr void))
   (set (at name registered-state-variables) variable-address))
 
 ;;

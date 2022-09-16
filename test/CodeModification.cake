@@ -36,16 +36,16 @@
 
 (defmacro magic-number ()
   (get-or-create-comptime-var test-var std::string)
-  (get-or-create-comptime-var test-crazy-var (* (const (* (<> std::vector int)))))
+  (get-or-create-comptime-var test-crazy-var (addr (const (addr (template (in std vector) int)))))
   (set (deref test-var) "Yeah")
   (tokenize-push output (fprintf stderr "The magic number is 42\n"))
   (return true))
 
-(defun-comptime sabotage-main-printfs (environment (& EvaluatorEnvironment)
+(defun-comptime sabotage-main-printfs (environment (ref EvaluatorEnvironment)
                                        &return bool)
   (get-or-create-comptime-var test-var std::string)
   (fprintf stderr "%s is the message\n" (call-on-ptr c_str test-var))
-  (var old-definition-tags (<> std::vector std::string))
+  (var old-definition-tags (template (in std vector) std::string))
   ;; Scope to ensure that definition-it and definition are not referred to after
   ;; ReplaceAndEvaluateDefinition is called, because they will be invalid
   (scope
@@ -56,7 +56,7 @@
      (return false))
 
    (fprintf stderr "sabotage-main-printfs: found main\n")
-   (var definition (& ObjectDefinition) (path definition-it > second))
+   (var definition (ref ObjectDefinition) (path definition-it > second))
    (when (!= (FindInContainer (field definition tags) "sabotage-main-printfs-done")
              (call-on end (field definition tags)))
      (fprintf stderr "sabotage-main-printfs: already modified\n")
@@ -65,7 +65,7 @@
    ;; Other modification functions should do this lazily, i.e. only create the expanded definition
    ;; if a modification is necessary
    ;; This must be allocated on the heap because it will be evaluated and needs to stick around
-   (var modified-main-tokens (* (<> std::vector Token)) (new (<> std::vector Token)))
+   (var modified-main-tokens (addr (template (in std vector) Token)) (new (template (in std vector) Token)))
    (unless (CreateDefinitionCopyMacroExpanded definition (deref modified-main-tokens))
      (delete modified-main-tokens)
      (return false))
@@ -76,8 +76,8 @@
    ;; Before
    (prettyPrintTokens (deref modified-main-tokens))
 
-   (var prev-token (* Token) null)
-   (for-in token (& Token) (deref modified-main-tokens)
+   (var prev-token (addr Token) null)
+   (for-in token (ref Token) (deref modified-main-tokens)
            (when (and prev-token
                       (= 0 (call-on compare (path prev-token > contents) "stderr"))
                       (ExpectTokenType "sabotage-main-printfs" token TokenType_String))
@@ -114,8 +114,8 @@
 ;; (rename-builtin "var" "badvar")
 ;; (defmacro var ()
 ;;   ;; Var cannot be used within var, because it's undefined. This excludes a lot of macros
-;;   ;; (get-or-create-comptime-var var-replacements (<> std::vector (* (const Token))))
-;;   ;; (for-in replaced-token (* (const Token)) (addr var-replacements)
+;;   ;; (get-or-create-comptime-var var-replacements (template (in std vector) (addr (const Token))))
+;;   ;; (for-in replaced-token (addr (const Token)) (addr var-replacements)
 ;;           ;; (NoteAtToken (deref replaced-token) "Replaced already"))
 
 ;;   (PushBackTokenExpression output (addr (at startTokenIndex tokens)))

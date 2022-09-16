@@ -15,7 +15,7 @@
 
 ;; Necessary to create e.g. in C PREFIX "_my_thing"
 (defgenerator static-string-combine (string-A (arg-index any) string-B (arg-index any))
-  (var statement (const ([] CStatementOperation))
+  (var statement (const (array CStatementOperation))
     (array
      (array Expression null string-A)
      (array Keyword " " -1)
@@ -24,7 +24,7 @@
 
 ;; e.g. (negate 1) outputs (-1)
 (defgenerator negate (to-negate (arg-index any))
-  (var negate-statement (const ([] CStatementOperation))
+  (var negate-statement (const (array CStatementOperation))
     (array
      (array OpenParen null -1)
      (array Keyword "-" -1)
@@ -36,15 +36,15 @@
 
 ;; A global and module-local variable "defer"
 (defmacro before-exit (work-body array)
-  (get-or-create-comptime-var before-exit-work (<> (in std vector) (* (const Token))))
+  (get-or-create-comptime-var before-exit-work (template (in std vector) (addr (const Token))))
   (call-on push_back (deref before-exit-work) work-body)
   (return true))
 
 ;; Run the deferred code
 (defmacro run-before-exit-work ()
-  (get-or-create-comptime-var before-exit-work (<> (in std vector) (* (const Token))))
+  (get-or-create-comptime-var before-exit-work (template (in std vector) (addr (const Token))))
   ;; TODO: Should we sort it eventually?
-  (for-in start-work-token (* (const Token)) (deref before-exit-work)
+  (for-in start-work-token (addr (const Token)) (deref before-exit-work)
     (tokenize-push output
       (token-splice start-work-token)))
   (return true))
@@ -54,9 +54,9 @@
 ;;
 
 ;; Especially useful for casting from malloc:
-;; (var my-thing (* thing) (type-cast (* thing) (malloc (sizeof thing))))
+;; (var my-thing (addr thing) (type-cast (addr thing) (malloc (sizeof thing))))
 ;; vs.
-;; (var-cast-to my-thing (* thing) (malloc (sizeof thing)))
+;; (var-cast-to my-thing (addr thing) (malloc (sizeof thing)))
 (defmacro var-cast-to (var-name symbol type any expression-to-cast any)
   (tokenize-push output
     (var (token-splice var-name) (token-splice type)
@@ -73,7 +73,7 @@
   (quick-token-at signature-token signature-index)
   (var return-type-start int -1)
   (var is-variadic-index int -1)
-  (var arguments (<> std::vector FunctionArgumentTokens))
+  (var arguments (template (in std vector) FunctionArgumentTokens))
   (unless (parseFunctionSignature tokens signature-index arguments
                                   return-type-start is-variadic-index)
     (return false))
@@ -110,23 +110,23 @@
 (defgenerator forward-declare (&rest start-body-index (index any))
   ;; TODO: Support global vs local?
   (var is-global bool true)
-  (var output-dest (& (<> std::vector StringOutput))
+  (var output-dest (ref (template (in std vector) StringOutput))
     (? is-global (field output header) (field output source)))
 
   (var end-invocation-index int (FindCloseParenTokenIndex tokens startTokenIndex))
   (var current-index int start-body-index)
-  (var namespace-stack (<> std::vector int))
+  (var namespace-stack (template (in std vector) int))
   (while (< current-index end-invocation-index)
-    (var current-token (& (const Token)) (at current-index tokens))
+    (var current-token (ref (const Token)) (at current-index tokens))
     ;; Invocations
     (when (= TokenType_OpenParen (field current-token type))
-      (var invocation-token (& (const Token)) (at (+ 1 current-index) tokens))
+      (var invocation-token (ref (const Token)) (at (+ 1 current-index) tokens))
       (cond
         ((= 0 (call-on compare (field invocation-token contents) "namespace"))
          (unless (< (+ 3 current-index) end-invocation-index)
            (ErrorAtToken invocation-token "missing name or body arguments")
            (return false))
-         (var namespace-name-token (& (const Token)) (at (+ 2 current-index) tokens))
+         (var namespace-name-token (ref (const Token)) (at (+ 2 current-index) tokens))
          (addStringOutput output-dest "namespace"
                           StringOutMod_SpaceAfter (addr invocation-token))
          (addStringOutput output-dest (field namespace-name-token contents)
@@ -139,7 +139,7 @@
          (unless (< (+ 2 current-index) end-invocation-index)
            (ErrorAtToken invocation-token "missing name argument")
            (return false))
-         (var type-name-token (& (const Token)) (at (+ 2 current-index) tokens))
+         (var type-name-token (ref (const Token)) (at (+ 2 current-index) tokens))
          (unless (ExpectTokenType "forward-declare" type-name-token TokenType_Symbol)
            (return false))
          (addStringOutput output-dest (field invocation-token contents)
@@ -163,7 +163,7 @@
   (return true))
 
 (defgenerator declare-external (statement-token (arg-index array))
-  (var statement (const ([] CStatementOperation))
+  (var statement (const (array CStatementOperation))
     (array
      (array Keyword "extern" -1)
      (array Statement null statement-token)))
@@ -172,16 +172,16 @@
   (return true))
 
 ;; TODO: Better way to handle global vs. local
-(defun-comptime defenum-internal (environment (& EvaluatorEnvironment)
-                                  context (& (const EvaluatorContext))
-                                  tokens (& (const (<> (in std vector) Token)))
+(defun-comptime defenum-internal (environment (ref EvaluatorEnvironment)
+                                  context (ref (const EvaluatorContext))
+                                  tokens (ref (const (template (in std vector) Token)))
                                   startTokenIndex int
-                                  output (& GeneratorOutput)
+                                  output (ref GeneratorOutput)
                                   is-global bool
-                                  name (* (const Token))
+                                  name (addr (const Token))
                                   enum-values int
                                   &return bool)
-  (var output-dest (& (<> std::vector StringOutput))
+  (var output-dest (ref (template (in std vector) StringOutput))
     (? is-global (field output header) (field output source)))
 
   (addStringOutput output-dest "typedef enum" StringOutMod_SpaceAfter name)
@@ -190,7 +190,7 @@
 
   (var end-invocation-index int (FindCloseParenTokenIndex tokens startTokenIndex))
   (each-token-argument-in tokens enum-values end-invocation-index current-index
-    (var current-token (* (const Token)) (addr (at current-index tokens)))
+    (var current-token (addr (const Token)) (addr (at current-index tokens)))
     (unless (ExpectTokenType "defenum" (deref current-token) TokenType_Symbol)
       (return false))
     (addStringOutput output-dest (path current-token > contents)
@@ -238,7 +238,7 @@
                      update (arg-index any)
                      ;; Cannot be optional due to CStatementOutput limitation
                      &rest body (arg-index any))
-  (var statement (const ([] CStatementOperation))
+  (var statement (array (const CStatementOperation))
     (array
      (array Keyword "for" -1)
      (array OpenParen null -1)
@@ -257,6 +257,16 @@
   (tokenize-push output
     (scope
      (each-in-range (array-size (token-splice array-name)) (token-splice iterator-name)
+       (token-splice-rest body tokens))))
+  (return true))
+
+(defmacro each-item-addr-in-array (array-name any iterator-name symbol
+                                   item-name symbol item-type any &rest body any)
+  (tokenize-push output
+    (scope
+     (each-in-range (array-size (token-splice array-name)) (token-splice iterator-name)
+       (var (token-splice item-name) (token-splice item-type)
+         (addr (at (token-splice iterator-name) (token-splice array-name))))
        (token-splice-rest body tokens))))
   (return true))
 
@@ -291,7 +301,7 @@
 
 (defmacro each-char-in-string (start-char any iterator-name symbol &rest body any)
   (tokenize-push output
-    (c-for (var (token-splice iterator-name) (* char) (token-splice start-char))
+    (c-for (var (token-splice iterator-name) (addr char) (token-splice start-char))
         (deref (token-splice iterator-name))
         (incr (token-splice iterator-name))
       (token-splice-rest body tokens)))
@@ -299,7 +309,7 @@
 
 (defmacro each-char-in-string-const (start-char any iterator-name symbol &rest body any)
   (tokenize-push output
-    (c-for (var (token-splice iterator-name) (* (const char)) (token-splice start-char))
+    (c-for (var (token-splice iterator-name) (addr (const char)) (token-splice start-char))
         (deref (token-splice iterator-name))
         (incr (token-splice iterator-name))
       (token-splice-rest body tokens)))
@@ -321,7 +331,7 @@
 ;;
 
 (defgenerator c-preprocessor-define-constant (define-name (arg-index symbol) value (arg-index any))
-  (var define-statement (const ([] CStatementOperation))
+  (var define-statement (const (array CStatementOperation))
     (array
      (array Keyword "#define" -1)
      (array Expression null define-name)
@@ -331,7 +341,7 @@
   (return (c-statement-out define-statement)))
 
 (defgenerator c-preprocessor-undefine (define-name symbol)
-  (var define-statement (const ([] CStatementOperation))
+  (var define-statement (const (array CStatementOperation))
     (array
      (array Keyword "#undef" -1)
      (array Expression null 1)
@@ -343,7 +353,7 @@
                                          &optional false-block (arg-index any))
   (if (!= -1 false-block)
       (scope
-       (var statement (const ([] CStatementOperation))
+       (var statement (const (array CStatementOperation))
          (array
           (array Keyword "#ifdef" -1)
           (array Expression null preprocessor-symbol)
@@ -356,7 +366,7 @@
           (array KeywordNoSpace "\n" -1)))
        (return (c-statement-out statement)))
       (scope
-       (var statement (const ([] CStatementOperation))
+       (var statement (const (array CStatementOperation))
          (array
           (array Keyword "#ifdef" -1)
           (array Expression null preprocessor-symbol)
@@ -374,13 +384,13 @@
 ;; Note that this circumvents the reference system in order to reduce compile-time cost of using
 ;; aliased functions. This will probably have to be fixed eventually
 (defgenerator output-aliased-c-function-invocation (&optional &rest arguments any)
-  (var invocation-name (& (const std::string)) (field (at (+ 1 startTokenIndex) tokens) contents))
+  (var invocation-name (ref (const (in std string))) (field (at (+ 1 startTokenIndex) tokens) contents))
   ;; TODO Hack: If I was referenced directly, don't do anything, because it's only for dependencies
   (when (= 0 (call-on compare invocation-name
                       "output-aliased-c-function-invocation"))
     (return true))
-  (get-or-create-comptime-var c-function-aliases (<> std::unordered_map std::string std::string))
-  (def-type-alias FunctionAliasMap (<> std::unordered_map std::string std::string))
+  (get-or-create-comptime-var c-function-aliases (template (in std unordered_map) (in std string) (in std string)))
+  (def-type-alias FunctionAliasMap (template (in std unordered_map) (in std string) (in std string)))
 
   (var alias-func-pair (in FunctionAliasMap iterator)
     (call-on-ptr find c-function-aliases invocation-name))
@@ -390,7 +400,7 @@
                   "gotten this far")
     (return false))
 
-  (var underlying-func-name (& (const std::string)) (path alias-func-pair > second))
+  (var underlying-func-name (ref (const (in std string))) (path alias-func-pair > second))
 
   ;; (NoteAtTokenf (at (+ 1 startTokenIndex) tokens) "found %s, outputting %s. Output is %p"
   ;;               (call-on c_str invocation-name) (call-on c_str underlying-func-name)
@@ -398,7 +408,7 @@
 
   (if arguments
       (scope
-       (var invocation-statement (const ([] CStatementOperation))
+       (var invocation-statement (const (array CStatementOperation))
          (array
           (array KeywordNoSpace (call-on c_str underlying-func-name) -1)
           (array OpenParen null -1)
@@ -409,7 +419,7 @@
                                  invocation-statement (array-size invocation-statement)
                                  output)))
       (scope
-       (var invocation-statement (const ([] CStatementOperation))
+       (var invocation-statement (const (array CStatementOperation))
          (array
           (array KeywordNoSpace (call-on c_str underlying-func-name) -1)
           (array OpenParen null -1)
@@ -426,7 +436,7 @@
   ;; alias, we can set the generators table to it
   (output-aliased-c-function-invocation)
 
-  (get-or-create-comptime-var c-function-aliases (<> std::unordered_map std::string std::string))
+  (get-or-create-comptime-var c-function-aliases (template (in std unordered_map) (in std string) (in std string)))
   (set (at (field alias contents) (deref c-function-aliases)) (field underlying-func-name contents))
 
   ;; (Logf "aliasing %s to %s\n" (call-on c_str (field underlying-func-name contents))
@@ -441,3 +451,36 @@
                                (addr alias)))
 
   (return evaluated-success))
+
+;;
+;; Uncategorized
+;;
+
+;; Make it easier to specify fields by name:
+;;(set-fields my-struct
+;;            member-a 43
+;;            member-b (* 3 4)
+;;            (member-c field-a) 3)
+(defmacro set-fields (output-struct any &rest set-fields (index any))
+  (var end-invocation-index int (FindCloseParenTokenIndex tokens startTokenIndex))
+  (var field-name-token (addr (const Token)) null)
+  (each-token-argument-in tokens set-fields end-invocation-index current-index
+    (unless field-name-token
+      (set field-name-token (addr (at current-index tokens)))
+      (continue))
+    (var set-value-token (addr (const Token)) (addr (at current-index tokens)))
+    (if (= (path field-name-token > type) TokenType_OpenParen)
+        (scope ;; Support nested fields via parens
+         (tokenize-push output
+           (set (field (token-splice output-struct)
+                       (token-splice-rest (+ field-name-token 1) tokens))
+                (token-splice set-value-token))))
+        (scope
+         (tokenize-push output
+           (set (field (token-splice output-struct) (token-splice field-name-token))
+                (token-splice set-value-token)))))
+    (set field-name-token null))
+  (when field-name-token
+    (ErrorAtToken (deref field-name-token) "Expected value for this field")
+    (return false))
+  (return true))

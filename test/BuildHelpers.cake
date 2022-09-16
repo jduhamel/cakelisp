@@ -10,8 +10,8 @@
   (fprintf stderr "Hello, build tools!\n")
   (return 0))
 
-(defun-comptime run-3rd-party-build (manager (& ModuleManager) module (* Module) &return bool)
-  (var cakelisp-executable (* (const char)) "bin/cakelisp")
+(defun-comptime run-3rd-party-build (manager (ref ModuleManager) module (addr Module) &return bool)
+  (var cakelisp-executable (addr (const char)) "bin/cakelisp")
   (comptime-cond ('Windows (set cakelisp-executable "bin/cakelisp.exe")))
   ;; Sequential
   (run-process-sequential-or (cakelisp-executable "--list-built-ins")

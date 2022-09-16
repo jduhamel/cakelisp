@@ -4,13 +4,13 @@
 (c-import "<stdio.h>" "<stdlib.h>")
 
 (defun test-defer ()
-  (var-cast-to buffer (* char) (malloc 1024))
+  (var-cast-to buffer (addr char) (malloc 1024))
   (defer
     (free buffer)
     (fprintf stderr "Freed buffer\n"))
   (defer (fprintf stderr "I could have dependend on buffer in my defer\n"))
   (each-in-range 5 i
-    (var-cast-to another-buffer (* char) (malloc 1024))
+    (var-cast-to another-buffer (addr char) (malloc 1024))
     (defer
       (free another-buffer)
       (fprintf stderr "Freed another buffer\n"))

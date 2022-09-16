@@ -9,9 +9,9 @@
   (return true))
 
 (defun-comptime cakelisp-evaluate-build-files-internal
-    (module-manager (& ModuleManager)
-     files (* (* (const char))) num-files int
-     build-outputs (& (<> (in std vector) (in std string)))
+    (module-manager (ref ModuleManager)
+     files (addr (addr (const char))) num-files int
+     build-outputs (ref (template (in std vector) (in std string)))
      &return bool)
   (each-in-range num-files i
     (unless (moduleManagerAddEvaluateFile module-manager (at i files) null)
@@ -26,23 +26,23 @@
     (return false))
   (return true))
 
-(defun-comptime cakelisp-evaluate-build-files (files (* (* (const char))) num-files int
+(defun-comptime cakelisp-evaluate-build-files (files (addr (addr (const char))) num-files int
                                                &return bool)
   ;; (Log "--------------------- { Open Cakelisp sub-instance\n");
   (var module-manager ModuleManager (array))
   (moduleManagerInitialize module-manager)
-  (var build-outputs (<> (in std vector) (in std string)))
+  (var build-outputs (template (in std vector) (in std string)))
   (unless (cakelisp-evaluate-build-files-internal module-manager files num-files build-outputs)
     (cakelisp-manager-destroy-and module-manager (return false)))
 
   (cakelisp-manager-destroy-and module-manager (return true)))
 
-(defun-comptime cakelisp-evaluate-build-execute-files (files (* (* (const char))) num-files int
+(defun-comptime cakelisp-evaluate-build-execute-files (files (addr (addr (const char))) num-files int
                                                        &return bool)
   ;; (Log "--------------------- { Open Cakelisp sub-instance\n");
   (var module-manager ModuleManager (array))
   (moduleManagerInitialize module-manager)
-  (var build-outputs (<> (in std vector) (in std string)))
+  (var build-outputs (template (in std vector) (in std string)))
   (unless (cakelisp-evaluate-build-files-internal module-manager files num-files build-outputs)
     (cakelisp-manager-destroy-and module-manager (return false)))
 

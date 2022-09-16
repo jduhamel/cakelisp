@@ -29,6 +29,7 @@
     (put 'each-in-interval 'lisp-indent-function 3)
     (put 'each-in-closed-interval-descending 'lisp-indent-function 3)
     (put 'each-in-array 'lisp-indent-function 2)
+    (put 'each-item-addr-in-array 'lisp-indent-function 4)
     (put 'each-char-in-string 'lisp-indent-function 2)
     (put 'each-char-in-string-const 'lisp-indent-function 2)
     (put 'c-for 'lisp-indent-function 3)
@@ -47,22 +48,38 @@
 
     (put 'defer 'lisp-indent-function 0)
 
+    (put 'set-fields 'lisp-indent-function 1)
+    (put 'var-cast-to 'lisp-indent-function 2)
+
+    (put 'if-open-file-scoped 'lisp-indent-function 3)
+
     ;; Keywords
     ;; "(def[a-zA-Z0-9-]*" all define keywords
 
+    (font-lock-add-keywords nil '(("\\(defun\\|defun-local\\|defun-nodecl\\|defmacro\\|defgenerator\\|defun-comptime\\) \\([a-z0-9A-Z-]*\\)"
+                                   2 font-lock-function-name-face)))
+
+    (font-lock-add-keywords nil '(("\\(defstruct\\|defstruct-local\\|defstruct-local\\|defenum\\|defenum-local\\|def-function-signature\\|def-function-signature-global\\|def-type-alias\\|def-type-alias-global\\) \\([a-z0-9A-Z-]*\\)"
+                                   2 font-lock-type-face)))
+
     ;; Configuration, build stuff, etc.
-    (font-lock-add-keywords nil '(("(\\(add-build-config-label\\|add-build-options\\|add-build-options-global\\|add-c-build-dependency\\|add-c-search-directory-global\\|add-c-search-directory-module\\|add-cakelisp-search-directory\\|add-compile-time-hook\\|add-compile-time-hook-module\\|add-compiler-link-options\\|add-cpp-build-dependency\\|add-library-dependency\\|add-library-runtime-search-directory\\|add-library-search-directory\\|add-linker-options\\|add-static-link-objects\\|set-cakelisp-option\\|set-module-option\\|c-import\\|c-preprocessor-define\\|c-preprocessor-define-global\\|comptime-cond\\|comptime-define-symbol\\|comptime-error\\|import\\|rename-builtin\\|export\\|export-and-evaluate\\|splice-point\\|token-splice\\|token-splice-addr\\|token-splice-array\\|token-splice-rest\\|tokenize-push\\)[ )\n]"
+    (font-lock-add-keywords nil '(("(\\(defer\\|add-build-config-label\\|add-build-options\\|add-build-options-global\\|add-c-build-dependency\\|add-c-search-directory-global\\|add-c-search-directory-module\\|add-cakelisp-search-directory\\|add-compile-time-hook\\|add-compile-time-hook-module\\|add-compiler-link-options\\|add-cpp-build-dependency\\|add-library-dependency\\|add-library-runtime-search-directory\\|add-library-search-directory\\|add-linker-options\\|add-static-link-objects\\|set-cakelisp-option\\|set-module-option\\|c-import\\|c-preprocessor-define\\|c-preprocessor-define-global\\|comptime-cond\\|comptime-define-symbol\\|comptime-error\\|import\\|rename-builtin\\|export\\|export-and-evaluate\\|forward-declare\\|splice-point\\|token-splice-rest\\|token-splice\\|token-splice-addr\\|token-splice-array\\|token-splice-rest\\|tokenize-push\\)[ )\n]"
                                    1 font-lock-builtin-face)))
 
-    (font-lock-add-keywords nil '(("\\b\\(true\\|false\\|null\\)\\b"
+    ;; This doesn't quite work, because two keywords in a row will not be highlighted. Example: (index any)
+    (font-lock-add-keywords nil '(("[^-]\\b\\(false\\|true\\|string\\|any\\|index\\|arg-index\\|symbol\\|array\\|null\\)\\b[^-]"
                                    1 font-lock-builtin-face)))
 
-    (font-lock-add-keywords nil '(("(\\(addr\\|and\\|array\\|at\\|bit-<<\\|bit->>\\|bit-and\\|bit-ones-complement\\|bit-or\\|bit-xor\\|call\\|call-on\\|call-on-ptr\\|decr\\|def-function-signature\\|def-function-signature-global\\|def-type-alias\\|def-type-alias-global\\|defgenerator\\|defmacro\\|defstruct\\|defstruct-local\\|defun\\|defun-comptime\\|defun-local\\|defun-nodecl\\|delete\\|delete-array\\|deref\\|eq\\|field\\|in\\|incr\\|mod\\|neq\\|new\\|new-array\\|not\\|nth\\|or\\|path\\|scope\\|set\\|type\\|type-cast\\|var\\|var-global\\|var-static\\)[ )\n]"
+    (font-lock-add-keywords nil '(("(\\(addr\\|ref\\|template\\|and\\|array\\|at\\|bit-shift-<<\\|bit-shift->>\\|bit-and\\|bit-ones-complement\\|bit-or\\|bit-xor\\|call\\|call-on\\|call-on-ptr\\|decr\\|def-function-signature\\|def-function-signature-global\\|def-type-alias\\|def-type-alias-global\\|defgenerator\\|defmacro\\|defstruct\\|defstruct-local\\|defun\\|defenum\\|defenum-local\\|defun-comptime\\|defun-local\\|defun-nodecl\\|delete\\|delete-array\\|deref\\|eq\\|field\\|in\\|incr\\|mod\\|neq\\|new\\|new-array\\|not\\|nth\\|or\\|path\\|scope\\|set\\|set-fields\\|type\\|type-cast\\|var\\|var-global\\|var-static\\|var-cast-to\\)[ )\n]"
                                    1 font-lock-keyword-face)))
 
     ;; Control flow
     (font-lock-add-keywords nil '(("(\\(break\\|cond\\|continue\\|for-in\\|if\\|return\\|unless\\|when\\|while\\)[ )\n]"
                                    1 font-lock-keyword-face)))
+
+    (font-lock-add-keywords nil '(("\\(var\\|var-static\\|var-global\\|var-cast-to\\) \\([a-z0-9A-Z-]*\\)"
+                                   (1 font-lock-type-face)
+                                   (2 font-lock-variable-name-face))))
 
     (font-lock-add-keywords nil '(("(\\(ignore\\)[ )\n]"
                                    ;; So you know it's not running; comment-face would be ideal

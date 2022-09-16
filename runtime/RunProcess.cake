@@ -18,13 +18,13 @@
 
 (forward-declare (struct RunProcessArguments))
 
-(defun run-process-wait-for-completion (run-arguments (* RunProcessArguments)
+(defun run-process-wait-for-completion (run-arguments (addr RunProcessArguments)
                                         &return int)
   (run-process-wait-for-completion-body))
 
-(def-function-signature-global subprocess-on-output-function (output (* (const char))))
+(def-function-signature-global subprocess-on-output-function (output (addr (const char))))
 
-(defun run-process-wait-for-completion-with-output (run-arguments (* RunProcessArguments)
+(defun run-process-wait-for-completion-with-output (run-arguments (addr RunProcessArguments)
                                                     on-output subprocess-on-output-function
                                                     &return int)
   (run-process-wait-for-completion-with-output-body on-output))

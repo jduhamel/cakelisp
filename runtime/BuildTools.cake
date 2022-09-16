@@ -27,7 +27,7 @@
   (return true))
 
 ;; Returns exit code (0 = success)
-(defun-comptime run-process-wait-for-completion-comptime (run-arguments (* RunProcessArguments)
+(defun-comptime run-process-wait-for-completion-comptime (run-arguments (addr RunProcessArguments)
                                                           &return int)
   (run-process-wait-for-completion-body))
 
@@ -38,13 +38,13 @@
                                       should-resolve symbol ;; 'resolve or 'no-resolve
                                       executable-name any
                                       &optional &rest arguments any)
-  (var specifier-tokens (<> std::vector Token))
-  (var command-arguments (<> std::vector Token))
+  (var specifier-tokens (template (in std vector) Token))
+  (var command-arguments (template (in std vector) Token))
 
   (when arguments
-    (var current-token (* (const Token)) arguments)
+    (var current-token (addr (const Token)) arguments)
     (var end-paren-index int (FindCloseParenTokenIndex tokens startTokenIndex))
-    (var end-token (* (const Token)) (addr (at end-paren-index tokens)))
+    (var end-token (addr (const Token)) (addr (at end-paren-index tokens)))
     (while (< current-token end-token)
       (cond
         ;; Special symbols to add optional specifications
@@ -52,7 +52,7 @@
               (isSpecialSymbol (deref current-token)))
          (cond
            ((= 0 (call-on compare (path current-token > contents) ":in-directory"))
-            (var next-token (* (const Token)) (+ 1 current-token))
+            (var next-token (addr (const Token)) (+ 1 current-token))
             (unless (< next-token end-token)
               (ErrorAtToken (deref next-token) "expected expression for working directory")
               (return false))
@@ -65,13 +65,13 @@
              ;; I thought I needed to make it absolute, but at least on Linux, chdir works with relative
              ;; TODO: Remove this if Windows is fine with it as well
              ;; (scope ;; Make the path absolute if necessary
-             ;;  (var working-dir-alloc (* (const char)) (makeAbsolutePath_Allocated null (token-splice next-token)))
+             ;;  (var working-dir-alloc (addr (const char)) (makeAbsolutePath_Allocated null (token-splice next-token)))
              ;;  (unless working-dir-alloc
              ;;    (Logf "error: could not find expected directory %s" (token-splice next-token))
              ;;    (return false))
              ;;  ;; Copy it so we don't need to worry about freeing if something goes wrong
              ;;  (set (token-splice-addr working-dir-str-var) working-dir-alloc)
-             ;;  (free (type-cast working-dir-alloc (* void))))
+             ;;  (free (type-cast working-dir-alloc (addr void))))
              (set (field (token-splice arguments-out-name) working-directory)
                   (call-on c_str (token-splice-addr working-dir-str-var))))
 
@@ -92,7 +92,7 @@
                      (? arguments (deref arguments) (deref executable-name)))
 
   (tokenize-push output
-    (var (token-splice-addr resolved-executable-var) ([] 1024 char) (array 0))
+    (var (token-splice-addr resolved-executable-var) (array 1024 char) (array 0))
     (var (token-splice arguments-out-name) RunProcessArguments (array 0)))
 
   (cond
@@ -117,7 +117,7 @@
     (set (field (token-splice arguments-out-name) fileToExecute)
          (token-splice-addr resolved-executable-var))
     (token-splice-array specifier-tokens)
-    (var (token-splice-addr command-array-var) ([] (* (const char)))
+    (var (token-splice-addr command-array-var) (array (addr (const char)))
       (array (token-splice-addr resolved-executable-var)
              (token-splice-array command-arguments) null))
     (set (field (token-splice arguments-out-name) arguments)
