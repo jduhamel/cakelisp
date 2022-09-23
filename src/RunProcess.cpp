@@ -41,7 +41,7 @@ struct Subprocess
 	// HANDLE hChildStd_IN_Wr; // Not used
 	HANDLE hChildStd_OUT_Rd;
 #endif
-	std::string command;
+	DynamicString command;
 };
 
 static std::vector<Subprocess> s_subprocesses;
@@ -163,7 +163,7 @@ int runProcess(const RunProcessArguments& arguments, int* statusOut)
 		if (logging.processes)
 			Logf("Created child process %d\n", pid);
 
-		std::string command = "";
+		DynamicString command = "";
 		for (const char** arg = arguments.arguments; *arg != nullptr; ++arg)
 		{
 			command.append(*arg);
@@ -538,7 +538,7 @@ const char** MakeProcessArgumentsFromCommand(const char* fileToExecute,
                                              std::vector<ProcessCommandArgument>& arguments,
                                              const ProcessCommandInput* inputs, int numInputs)
 {
-	std::vector<const char*> argumentsAccumulate;
+	CStringArray argumentsAccumulate;
 
 	for (unsigned int i = 0; i < arguments.size(); ++i)
 	{

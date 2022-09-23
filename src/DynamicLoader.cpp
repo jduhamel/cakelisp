@@ -22,7 +22,7 @@ struct DynamicLibrary
 	DynamicLibHandle handle;
 };
 
-typedef std::unordered_map<std::string, DynamicLibrary> DynamicLibraryMap;
+typedef std::unordered_map<DynamicString, DynamicLibrary> DynamicLibraryMap;
 static DynamicLibraryMap dynamicLibraries;
 
 DynamicLibHandle loadDynamicLibrary(const char* libraryPath)
@@ -132,7 +132,7 @@ void* getSymbolFromDynamicLibrary(DynamicLibHandle library, const char* symbolNa
 
 void closeAllDynamicLibraries()
 {
-	for (std::pair<const std::string, DynamicLibrary>& libraryPair : dynamicLibraries)
+	for (std::pair<const DynamicString, DynamicLibrary>& libraryPair : dynamicLibraries)
 	{
 #if defined(UNIX) || defined(MACOS)
 		dlclose(libraryPair.second.handle);

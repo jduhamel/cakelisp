@@ -1,11 +1,12 @@
 #pragma once
 
-#include <string>
 #include <vector>
 // TODO: Replace with fast hash table
 #include <unordered_map>
 
 #include "Build.hpp"
+#include "DynamicArray.hpp"
+#include "DynamicString.hpp"
 #include "EvaluatorEnums.hpp"
 #include "Exporting.hpp"
 #include "FileTypes.hpp"
@@ -17,6 +18,8 @@ struct Module;
 struct NameStyleSettings;
 struct Token;
 
+typedef std::vector<Token> TokenArray;
+
 // Rather than needing to allocate and edit a buffer eventually equal to the size of the final
 // output, store output operations instead. This also facilitates source <-> generated mapping data
 struct StringOutput
@@ -24,7 +27,7 @@ struct StringOutput
 	// TODO: Putting this in a union means we need to write a destructor which can detect when to
 	// destroy output
 	// union {
-	std::string output;
+	DynamicString output;
 	GeneratorOutput* spliceOutput;
 	// };
 
@@ -34,41 +37,45 @@ struct StringOutput
 	const Token* startToken;
 };
 
+typedef std::vector<StringOutput> StringOutputArray;
+
 struct FunctionArgumentMetadata
 {
-	std::string name;
+	DynamicString name;
 
 	const Token* typeStartToken;
 	// Unnecessary because we can just keep track of our parens, but included for convenience
 	const Token* typeEndToken;
 };
 
+typedef std::vector<FunctionArgumentMetadata> FunctionArgumentMetadataArray;
+
 struct FunctionMetadata
 {
 	// The Cakelisp name, NOT the converted C name
-	std::string name;
+	DynamicString name;
 
 	// From the opening paren of e.g. "(defun" to the final ")" closing the body
 	const Token* startDefinitionToken;
 	// Unnecessary because we can just keep track of our parens, but included for convenience
 	const Token* endDefinitionToken;
 
-	std::vector<FunctionArgumentMetadata> arguments;
+	FunctionArgumentMetadataArray arguments;
 };
 
 const char* importLanguageToString(ImportLanguage type);
 
 struct ImportMetadata
 {
-	std::string importName;
+	DynamicString importName;
 	ImportLanguage language;
 	const Token* triggerToken;
 };
 
 struct GeneratorOutput
 {
-	std::vector<StringOutput> source;
-	std::vector<StringOutput> header;
+	StringOutputArray source;
+	StringOutputArray header;
 
 	std::vector<FunctionMetadata> functions;
 	std::vector<ImportMetadata> imports;
@@ -98,28 +105,28 @@ struct EvaluatorEnvironment;
 
 // Generators output C/C++ code
 typedef bool (*GeneratorFunc)(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                              const std::vector<Token>& tokens, int startTokenIndex,
+                              const TokenArray& tokens, int startTokenIndex,
                               GeneratorOutput& output);
 
 // Macros output tokens only
 // Note that this is for the macro invocation/signature; defining macros is actually done via a
 // generator, because macros themselves are implemented in Cakelisp/C++
 typedef bool (*MacroFunc)(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                          const std::vector<Token>& tokens, int startTokenIndex,
-                          std::vector<Token>& output);
+                          const TokenArray& tokens, int startTokenIndex,
+                          TokenArray& output);
 
 // TODO: Replace with fast hash table implementation
-typedef std::unordered_map<std::string, MacroFunc> MacroTable;
-typedef std::unordered_map<std::string, GeneratorFunc> GeneratorTable;
+typedef std::unordered_map<DynamicString, MacroFunc> MacroTable;
+typedef std::unordered_map<DynamicString, GeneratorFunc> GeneratorTable;
 typedef MacroTable::iterator MacroIterator;
 typedef GeneratorTable::iterator GeneratorIterator;
 
-typedef std::unordered_map<std::string, const Token*> GeneratorLastReferenceTable;
+typedef std::unordered_map<DynamicString, const Token*> GeneratorLastReferenceTable;
 typedef GeneratorLastReferenceTable::iterator GeneratorLastReferenceTableIterator;
 
 struct ObjectReference
 {
-	const std::vector<Token>* tokens;
+	const TokenArray* tokens;
 	int startIndex;
 	EvaluatorContext context;
 
@@ -132,6 +139,8 @@ struct ObjectReference
 	bool isResolved;
 };
 
+typedef std::vector<ObjectReference> ObjectReferenceArray;
+
 // TODO Need to add insertion points for later fixing
 struct ObjectReferenceStatus
 {
@@ -143,17 +152,19 @@ struct ObjectReferenceStatus
 
 	// In the case of multiple references to the same object in the same definition, keep track of
 	// all of them for guessing
-	std::vector<ObjectReference> references;
+	ObjectReferenceArray references;
 };
 
-typedef std::unordered_map<std::string, ObjectReferenceStatus> ObjectReferenceStatusMap;
-typedef std::pair<const std::string, ObjectReferenceStatus> ObjectReferenceStatusPair;
+typedef std::unordered_map<DynamicString, ObjectReferenceStatus> ObjectReferenceStatusMap;
+typedef std::pair<const DynamicString, ObjectReferenceStatus> ObjectReferenceStatusPair;
 
 struct MacroExpansion
 {
 	const Token* atToken;
-	const std::vector<Token>* tokens;
+	const TokenArray* tokens;
 };
+
+typedef std::vector<MacroExpansion> MacroExpansionArray;
 
 typedef std::unordered_map<uint32_t, const Token*> TokenizePushTokensMap;
 typedef std::pair<const uint32_t, const Token*> TokenizePushTokensPair;
@@ -167,7 +178,7 @@ typedef std::vector<RequiredFeatureReason> RequiredFeatureReasonList;
 
 struct ObjectDefinition
 {
-	std::string name;
+	DynamicString name;
 	// The generator invocation that actually triggered the definition of this object
 	const Token* definitionInvocation;
 	ObjectType type;
@@ -188,7 +199,7 @@ struct ObjectDefinition
 	// EvaluatorEnvironment still handles deleting the tokens array the macro created. Note that
 	// these won't necessarily be in order, because macro definitions could resolve in different
 	// orders than invoked
-	std::vector<MacroExpansion> macroExpansions;
+	MacroExpansionArray macroExpansions;
 
 	// If a definition is going to be modified, store its context for reevaluation
 	EvaluatorContext context;
@@ -202,12 +213,12 @@ struct ObjectDefinition
 	// shortcut to what isCompileTimeCodeLoaded() would return
 	bool isLoaded;
 	// Used by other compile-time functions to include this function's already output header
-	std::string compileTimeHeaderName;
+	DynamicString compileTimeHeaderName;
 	// Only necessary for Windows builds; holds the import library for calling comptime functions
-	std::string compileTimeImportLibraryName;
+	DynamicString compileTimeImportLibraryName;
 
 	// Arbitrary tags user may add for compile-time reference
-	std::vector<std::string> tags;
+	DynamicStringArray tags;
 
 	// In order to have context-unique symbols, this number is incremented for each unique name
 	// requested. This is only relevant for compile-time function bodies
@@ -223,17 +234,17 @@ struct ObjectDefinition
 
 struct ObjectReferencePool
 {
-	std::vector<ObjectReference> references;
+	ObjectReferenceArray references;
 };
 
 // NOTE: See comment in BuildEvaluateReferences() before changing this data structure. The current
 // implementation assumes references to values will not be invalidated if the hash map changes
-typedef std::unordered_map<std::string, ObjectDefinition> ObjectDefinitionMap;
-typedef std::pair<const std::string, ObjectDefinition> ObjectDefinitionPair;
-typedef std::unordered_map<std::string, ObjectReferencePool> ObjectReferencePoolMap;
-typedef std::pair<const std::string, ObjectReferencePool> ObjectReferencePoolPair;
+typedef std::unordered_map<DynamicString, ObjectDefinition> ObjectDefinitionMap;
+typedef std::pair<const DynamicString, ObjectDefinition> ObjectDefinitionPair;
+typedef std::unordered_map<DynamicString, ObjectReferencePool> ObjectReferencePoolMap;
+typedef std::pair<const DynamicString, ObjectReferencePool> ObjectReferencePoolPair;
 
-typedef std::unordered_map<std::string, void*> CompileTimeFunctionTable;
+typedef std::unordered_map<DynamicString, void*> CompileTimeFunctionTable;
 typedef CompileTimeFunctionTable::iterator CompileTimeFunctionTableIterator;
 
 struct CompileTimeFunctionMetadata
@@ -242,7 +253,7 @@ struct CompileTimeFunctionMetadata
 	const Token* startArgsToken;
 };
 
-typedef std::unordered_map<std::string, CompileTimeFunctionMetadata>
+typedef std::unordered_map<DynamicString, CompileTimeFunctionMetadata>
     CompileTimeFunctionMetadataTable;
 typedef CompileTimeFunctionMetadataTable::iterator CompileTimeFunctionMetadataTableIterator;
 
@@ -265,30 +276,32 @@ struct CompileTimeHook
 	int environmentPriority;
 };
 
+typedef std::vector<CompileTimeHook> CompileTimeHookArray;
+
 // Update g_environmentCompileTimeVariableDestroySignature if you change this signature
 typedef void (*CompileTimeVariableDestroyFunc)(void* data);
 
 struct CompileTimeVariable
 {
 	// For runtime type checking
-	std::string type;
+	DynamicString type;
 	void* data;
 	// The type must be known if destructors are to be run. POD/C malloc'd types can use free()
 	// (which is used if destroyCompileTimeFuncName is empty), but C++ types need to cast the
 	// pointer to the appropriate type to make sure destructor is called
-	std::string destroyCompileTimeFuncName;
+	DynamicString destroyCompileTimeFuncName;
 };
-typedef std::unordered_map<std::string, CompileTimeVariable> CompileTimeVariableTable;
+typedef std::unordered_map<DynamicString, CompileTimeVariable> CompileTimeVariableTable;
 typedef CompileTimeVariableTable::iterator CompileTimeVariableTableIterator;
-typedef std::pair<const std::string, CompileTimeVariable> CompileTimeVariableTablePair;
+typedef std::pair<const DynamicString, CompileTimeVariable> CompileTimeVariableTablePair;
 
-typedef std::unordered_map<std::string, const char*> RequiredCompileTimeFunctionReasonsTable;
+typedef std::unordered_map<DynamicString, const char*> RequiredCompileTimeFunctionReasonsTable;
 typedef RequiredCompileTimeFunctionReasonsTable::iterator
     RequiredCompileTimeFunctionReasonsTableIterator;
 
-typedef std::unordered_map<std::string, bool> CompileTimeSymbolTable;
+typedef std::unordered_map<DynamicString, bool> CompileTimeSymbolTable;
 
-typedef std::unordered_map<std::string, FileModifyTime> HeaderModificationTimeTable;
+typedef std::unordered_map<DynamicString, FileModifyTime> HeaderModificationTimeTable;
 
 struct SplicePoint
 {
@@ -297,9 +310,13 @@ struct SplicePoint
 	const Token* blameToken;
 };
 
-typedef std::unordered_map<std::string, SplicePoint> SplicePointTable;
-typedef std::pair<const std::string, SplicePoint> SplicePointTablePair;
+typedef std::unordered_map<DynamicString, SplicePoint> SplicePointTable;
+typedef std::pair<const DynamicString, SplicePoint> SplicePointTablePair;
 typedef SplicePointTable::iterator SplicePointTableIterator;
+
+typedef std::vector<const TokenArray*> TokenArrayAddressArray;
+
+typedef std::vector<GeneratorOutput*> GeneratorOutputAddressArray;
 
 // Unlike context, which can't be changed, environment can be changed.
 // Keep in mind that calling functions which can change the environment may invalidate your pointers
@@ -326,7 +343,7 @@ struct EvaluatorEnvironment
 	// StringOperations. Token vectors must not be changed after they are created or pointers to
 	// Tokens will become invalid. The const here is to protect from that. You can change the token
 	// contents, however
-	std::vector<const std::vector<Token>*> comptimeTokens;
+	TokenArrayAddressArray comptimeTokens;
 
 	// Shared across comptime build rounds
 	HeaderModificationTimeTable comptimeHeaderModifiedCache;
@@ -348,7 +365,7 @@ struct EvaluatorEnvironment
 	// definition's output is still used, but no longer has a definition to keep track of it. This
 	// is also used for splices that don't have an owning object. We'll make sure the orphans get
 	// destroyed so as to not leak memory.
-	std::vector<GeneratorOutput*> orphanedOutputs;
+	GeneratorOutputAddressArray orphanedOutputs;
 
 	// Create a named splice point for later output splicing. Used so the user can insert things
 	SplicePointTable splicePoints;
@@ -390,19 +407,19 @@ struct EvaluatorEnvironment
 	bool comptimeUsePrecompiledHeaders;
 	bool comptimeHeadersPrepared;
 	// Note that this is the header without the precompilation extension
-	std::string comptimeCombinedHeaderFilename;
+	DynamicString comptimeCombinedHeaderFilename;
 
 	// Added as a search directory for compile time code execution
-	std::string cakelispSrcDir;
+	DynamicString cakelispSrcDir;
 
 	// Added as a library search directory for compile time code execution (required by MSVC only)
-	std::string cakelispLibDir;
+	DynamicString cakelispLibDir;
 
 	// Search paths for Cakelisp files, not C includes
-	std::vector<std::string> searchPaths;
+	DynamicStringArray searchPaths;
 
-	std::vector<std::string> cSearchDirectories;
-	std::vector<std::string> compilerAdditionalOptions;
+	DynamicStringArray cSearchDirectories;
+	DynamicStringArray compilerAdditionalOptions;
 
 	// Build configurations are e.g. Debug vs. Release, which have e.g. different compiler flags
 	// Anything which changes the output vs. another configuration should have a label. Examples:
@@ -413,16 +430,16 @@ struct EvaluatorEnvironment
 	// Labels make it possible for the user to minimize re-compilation by ensuring the cache retains
 	// artifacts from the last configurations, so you can build debug and switch to release, then
 	// back to debug without having to rebuild debug. Many labels can be specified
-	std::vector<std::string> buildConfigurationLabels;
+	DynamicStringArray buildConfigurationLabels;
 
 	// Once set, no label changes are allowed (the output is being written)
 	bool buildConfigurationLabelsAreFinal;
 
 	// Files in this list will be checked and cause re-links
-	std::vector<std::string> additionalStaticLinkObjects;
+	DynamicStringArray additionalStaticLinkObjects;
 
 	// When using the default build system, the path to output the final executable
-	std::string executableOutput;
+	DynamicString executableOutput;
 
 	ProcessCommand compileTimeBuildCommand;
 	ProcessCommand compileTimeLinkCommand;
@@ -433,10 +450,10 @@ struct EvaluatorEnvironment
 	// At this point, all known references are resolved. This is the best time to let the user do
 	// arbitrary code generation and modification. These changes will need to be evaluated and their
 	// references resolved, so we need to repeat the whole process until no more changes are made
-	std::vector<CompileTimeHook> postReferencesResolvedHooks;
+	CompileTimeHookArray postReferencesResolvedHooks;
 
 	// Gives the user the chance to change the link command
-	std::vector<CompileTimeHook> preLinkHooks;
+	CompileTimeHookArray preLinkHooks;
 
 	// Will NOT clean up macroExpansions! Use environmentDestroyInvalidateTokens()
 	CAKELISP_API ~EvaluatorEnvironment();
@@ -450,26 +467,26 @@ void environmentDestroyInvalidateTokens(EvaluatorEnvironment& environment);
 
 CAKELISP_API int EvaluateGenerate_Recursive(EvaluatorEnvironment& environment,
                                             const EvaluatorContext& context,
-                                            const std::vector<Token>& tokens, int startTokenIndex,
+                                            const TokenArray& tokens, int startTokenIndex,
                                             GeneratorOutput& output);
 
 // Delimiter template will be inserted between the outputs. Pass nullptr for no delimiter
 int EvaluateGenerateAll_Recursive(EvaluatorEnvironment& environment,
-                                  const EvaluatorContext& context, const std::vector<Token>& tokens,
+                                  const EvaluatorContext& context, const TokenArray& tokens,
                                   int startTokenIndex, GeneratorOutput& output);
 
 // For compile-time code modification.
 // This destroys the old definition. Don't hold on to references to it for that reason
 CAKELISP_API bool ReplaceAndEvaluateDefinition(EvaluatorEnvironment& environment,
                                                const char* definitionToReplaceName,
-                                               const std::vector<Token>& newDefinitionTokens);
+                                               const TokenArray& newDefinitionTokens);
 
 // Clears the output of the splice (if any) and evaluates the newSpliceTokens into the splice point
 // Note that this cannot undo the effects of a previous splice evaluation on the environment, it can
 // only undo the generated output.
 CAKELISP_API bool ClearAndEvaluateAtSplicePoint(EvaluatorEnvironment& environment,
                                                 const char* splicePointName,
-                                                const std::vector<Token>* newSpliceTokens);
+                                                const TokenArray* newSpliceTokens);
 
 // Returns whether all references were resolved successfully
 bool EvaluateResolveReferences(EvaluatorEnvironment& environment);
@@ -517,10 +534,10 @@ const char* objectTypeToString(ObjectType type);
 // encounteredInFile becomes an automatic relative search path
 // Returns false if the file does not exist in any of the paths searched
 bool searchForFileInPaths(const char* shortPath, const char* encounteredInFile,
-                          const std::vector<std::string>& searchPaths, char* foundFilePathOut,
+                          const DynamicStringArray& searchPaths, char* foundFilePathOut,
                           int foundFilePathOutSize);
 bool searchForFileInPathsWithError(const char* shortPath, const char* encounteredInFile,
-                                   const std::vector<std::string>& searchPaths,
+                                   const DynamicStringArray& searchPaths,
                                    char* foundFilePathOut, int foundFilePathOutSize,
                                    const Token& blameToken);
 
@@ -530,11 +547,11 @@ bool searchForFileInPathsWithError(const char* shortPath, const char* encountere
 // be considered arbitrary, since it depends on order of references being resolved, which isn't
 // predictable (though is deterministic). Larger priority numbers mean hook is executed earlier than
 // default (0). Negative priority numbers mean hook is executed later than default.
-bool AddCompileTimeHook(EvaluatorEnvironment& environment, std::vector<CompileTimeHook>* hookList,
+bool AddCompileTimeHook(EvaluatorEnvironment& environment, CompileTimeHookArray* hookList,
                         const char* expectedSignature, const char* compileTimeFunctionName,
                         void* hookFunction, int userPriority, const Token* blameToken);
 
-bool StringOutputHasAnyMeaningfulOutput(const std::vector<StringOutput>* stringOutput,
+bool StringOutputHasAnyMeaningfulOutput(const StringOutputArray* stringOutput,
                                         bool isHeader);
 
 extern const char* globalDefinitionName;

@@ -341,7 +341,7 @@ static void writeStringOutput(const NameStyleSettings& nameSettings,
 static void writeOutputFollowSplices_Recursive(const NameStyleSettings& nameSettings,
                                                const WriterFormatSettings& formatSettings,
                                                StringOutputState& outputState,
-                                               const std::vector<StringOutput>& outputOperations,
+                                               const StringOutputArray& outputOperations,
                                                bool isHeader);
 
 static void writeSpliceOutput(const NameStyleSettings& nameSettings,
@@ -402,7 +402,7 @@ static void writeOnScopeExit(const NameStyleSettings& nameSettings,
 static void writeOutputFollowSplices_Recursive(const NameStyleSettings& nameSettings,
                                                const WriterFormatSettings& formatSettings,
                                                StringOutputState& outputState,
-                                               const std::vector<StringOutput>& outputOperations,
+                                               const StringOutputArray& outputOperations,
                                                bool isHeader)
 {
 	for (const StringOutput& operation : outputOperations)
@@ -673,7 +673,7 @@ bool writeGeneratorOutput(const GeneratorOutput& generatedOutput,
 }
 
 bool writeCombinedHeader(const char* combinedHeaderFilename,
-                         std::vector<const char*>& headersToInclude)
+                         CStringArray& headersToInclude)
 {
 	char tempFilename[MAX_PATH_LENGTH] = {0};
 	PrintfBuffer(tempFilename, "%s.temp", combinedHeaderFilename);

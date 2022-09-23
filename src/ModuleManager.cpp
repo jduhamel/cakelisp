@@ -405,7 +405,7 @@ void makeSafeFilename(char* buffer, int bufferSize, const char* filename)
 	}
 }
 
-bool moduleLoadTokenizeValidate(const char* filename, const std::vector<Token>** tokensOut)
+bool moduleLoadTokenizeValidate(const char* filename, const TokenArray** tokensOut)
 {
 	*tokensOut = nullptr;
 
@@ -417,9 +417,9 @@ bool moduleLoadTokenizeValidate(const char* filename, const std::vector<Token>**
 	int lineNumber = 1;
 	// We need to be very careful about when we delete this so as to not invalidate pointers
 	// It is immutable to also disallow any pointer invalidation if we were to resize it
-	const std::vector<Token>* tokens = nullptr;
+	const TokenArray* tokens = nullptr;
 	{
-		std::vector<Token>* tokens_CREATIONONLY = new std::vector<Token>;
+		TokenArray* tokens_CREATIONONLY = new TokenArray;
 		bool isFirstLine = true;
 		while (fgets(lineBuffer, sizeof(lineBuffer), file))
 		{
@@ -638,7 +638,7 @@ bool moduleManagerEvaluateResolveReferences(ModuleManager& manager)
 
 // Directory is named from build configuration labels, e.g. Debug-HotReload
 // Order DOES matter, in case changing configuration order changes which settings get eval'd first
-static bool createBuildOutputDirectory(EvaluatorEnvironment& environment, std::string& outputDirOut)
+static bool createBuildOutputDirectory(EvaluatorEnvironment& environment, DynamicString& outputDirOut)
 {
 	// As soon as we start writing, we need to decide what directory we will write to. Fix build
 	// configuration labels because it's too late to change them now
@@ -664,7 +664,7 @@ static bool createBuildOutputDirectory(EvaluatorEnvironment& environment, std::s
 
 	for (int i = 0; i < numLabels; ++i)
 	{
-		const std::string& label = environment.buildConfigurationLabels[i];
+		const DynamicString& label = environment.buildConfigurationLabels[i];
 		if (!writeStringToBuffer(label.c_str(), &writeHead, outputDirName, sizeof(outputDirName)))
 		{
 			Log("error: ran out of space writing build configuration output directory name\n");
@@ -769,9 +769,9 @@ bool moduleManagerWriteGeneratedOutput(ModuleManager& manager)
 			PrintfBuffer(cakelispExtensionBuffer, "%s.hpp", relativeFileBuffer);
 
 			// TODO Support outputting to both in one
-			std::vector<StringOutput>& outputDestination =
-			    import.outputTo == CakelispImportOutput_Header ? import.spliceOutput->header :
-			                                                     import.spliceOutput->source;
+			StringOutputArray& outputDestination = import.outputTo == CakelispImportOutput_Header ?
+			                                           import.spliceOutput->header :
+			                                           import.spliceOutput->source;
 			addStringOutput(outputDestination, "#include", StringOutMod_SpaceAfter,
 			                import.fileToImportToken);
 			addStringOutput(outputDestination, cakelispExtensionBuffer,
@@ -823,15 +823,15 @@ static void OnCompileProcessOutput(const char* output)
 struct BuildObject
 {
 	int buildStatus;
-	std::string sourceFilename;
-	std::string filename;
+	DynamicString sourceFilename;
+	DynamicString filename;
 
 	ProcessCommand* buildCommandOverride;
-	std::vector<std::string> includesSearchDirs;
-	std::vector<std::string> additionalOptions;
+	DynamicStringArray includesSearchDirs;
+	DynamicStringArray additionalOptions;
 
 	// Only used for include scanning
-	std::vector<std::string> headerSearchDirectories;
+	DynamicStringArray headerSearchDirectories;
 };
 
 void buildObjectsFree(std::vector<BuildObject*>& objects)
@@ -847,7 +847,7 @@ void copyModuleBuildOptionsToBuildObject(Module* module, ProcessCommand* buildCo
 {
 	object->buildCommandOverride = buildCommandOverride;
 
-	for (const std::string& searchDir : module->cSearchDirectories)
+	for (const DynamicString& searchDir : module->cSearchDirectories)
 	{
 		char searchDirToArgument[MAX_PATH_LENGTH + 2];
 		makeIncludeArgument(searchDirToArgument, sizeof(searchDirToArgument), searchDir.c_str());
@@ -862,8 +862,8 @@ void copyModuleBuildOptionsToBuildObject(Module* module, ProcessCommand* buildCo
 // Copy cachedOutputExecutable to finalOutputNameOut, adding executable permissions
 // TODO: There's no easy way to know whether this exe is the current build configuration's
 // output exe, so copy it every time
-bool copyExecutableToFinalOutput(const std::string& cachedOutputExecutable,
-                                 const std::string& finalOutputName)
+bool copyExecutableToFinalOutput(const DynamicString& cachedOutputExecutable,
+                                 const DynamicString& finalOutputName)
 {
 	if (logging.fileSystem)
 		Log("Copying executable from cache\n");
@@ -899,7 +899,7 @@ bool copyExecutableToFinalOutput(const std::string& cachedOutputExecutable,
 	return true;
 }
 
-static void addStringIfUnique(std::vector<std::string>& output, const char* stringToAdd)
+static void addStringIfUnique(DynamicStringArray& output, const char* stringToAdd)
 {
 	if (FindInContainer(output, stringToAdd) == output.end())
 		output.push_back(stringToAdd);
@@ -907,25 +907,25 @@ static void addStringIfUnique(std::vector<std::string>& output, const char* stri
 
 struct SharedBuildOptions
 {
-	std::vector<std::string>* cSearchDirectories;
+	DynamicStringArray* cSearchDirectories;
 	ProcessCommand* buildCommand;
 	ProcessCommand* linkCommand;
-	std::string* executableOutput;
+	DynamicString* executableOutput;
 	// Cached directory, not necessarily the final artifacts directory (e.g. executable-output
 	// option sets different location for the final executable)
-	std::string* buildOutputDir;
-	std::vector<CompileTimeHook>* preLinkHooks;
+	DynamicString* buildOutputDir;
+	CompileTimeHookArray* preLinkHooks;
 
 	// Compile options
-	std::vector<std::string>* compilerAdditionalOptions;
+	DynamicStringArray* compilerAdditionalOptions;
 
 	// Link options
-	std::vector<std::string> linkLibraries; // dynamic library/shared objects
-	std::vector<std::string>* staticLinkObjects; // static objects/resources/archives
-	std::vector<std::string> librarySearchDirs;
-	std::vector<std::string> libraryRuntimeSearchDirs;
-	std::vector<std::string> compilerLinkOptions;
-	std::vector<std::string> toLinkerOptions;
+	DynamicStringArray linkLibraries; // dynamic library/shared objects
+	DynamicStringArray* staticLinkObjects; // static objects/resources/archives
+	DynamicStringArray librarySearchDirs;
+	DynamicStringArray libraryRuntimeSearchDirs;
+	DynamicStringArray compilerLinkOptions;
+	DynamicStringArray toLinkerOptions;
 };
 
 static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
@@ -973,7 +973,7 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 		if (logging.buildProcess)
 			Logf("Build module %s\n", module->sourceOutputName.c_str());
 
-		std::vector<std::string> dependencyResolveDirectories;
+		DynamicStringArray dependencyResolveDirectories;
 		{
 			dependencyResolveDirectories.reserve(manager.environment.cSearchDirectories.size() +
 			                                     module->cSearchDirectories.size());
@@ -1029,8 +1029,8 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 		{
 			struct
 			{
-				std::vector<std::string>* inputs;
-				std::vector<std::string>* output;
+				DynamicStringArray* inputs;
+				DynamicStringArray* output;
 			} linkArgumentsToAdd[]{
 			    {&module->toLinkerOptions, &sharedBuildOptions.toLinkerOptions},
 			    {&module->compilerLinkOptions, &sharedBuildOptions.compilerLinkOptions},
@@ -1041,7 +1041,7 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 			for (size_t linkArgumentSet = 0; linkArgumentSet < ArraySize(linkArgumentsToAdd);
 			     ++linkArgumentSet)
 			{
-				for (const std::string& str : *(linkArgumentsToAdd[linkArgumentSet].inputs))
+				for (const DynamicString& str : *(linkArgumentsToAdd[linkArgumentSet].inputs))
 					addStringIfUnique(*(linkArgumentsToAdd[linkArgumentSet].output), str.c_str());
 			}
 		}
@@ -1087,7 +1087,7 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 	}
 
 	// Ensure unique output filenames
-	typedef std::unordered_map<std::string, std::vector<BuildObject*>> FilenameMap;
+	typedef std::unordered_map<DynamicString, std::vector<BuildObject*>> FilenameMap;
 	FilenameMap filenameMap;
 	for (BuildObject* object : buildObjects)
 	{
@@ -1105,14 +1105,14 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 		}
 	}
 
-	for (std::pair<const std::string, std::vector<BuildObject*>>& filenamePair : filenameMap)
+	for (std::pair<const DynamicString, std::vector<BuildObject*>>& filenamePair : filenameMap)
 	{
 		if (filenamePair.second.size() < 2)
 			continue;
 
 		for (BuildObject* object : filenamePair.second)
 		{
-			std::string disambiguatedFilename = object->sourceFilename;
+			DynamicString disambiguatedFilename = object->sourceFilename;
 			for (int i = 0; i < (int)disambiguatedFilename.size(); ++i)
 			{
 				if (disambiguatedFilename[i] == '/' || disambiguatedFilename[i] == '\\')
@@ -1166,18 +1166,18 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 
 	for (BuildObject* object : buildObjects)
 	{
-		std::vector<const char*> searchDirArgs;
+		CStringArray searchDirArgs;
 		searchDirArgs.reserve(object->includesSearchDirs.size() +
 		                      buildOptions.cSearchDirectories->size());
-		for (const std::string& searchDirArg : object->includesSearchDirs)
+		for (const DynamicString& searchDirArg : object->includesSearchDirs)
 		{
 			searchDirArgs.push_back(searchDirArg.c_str());
 		}
 
 		// This code sucks
-		std::vector<std::string> globalSearchDirArgs;
+		DynamicStringArray globalSearchDirArgs;
 		globalSearchDirArgs.reserve(buildOptions.cSearchDirectories->size());
-		for (const std::string& searchDir : *buildOptions.cSearchDirectories)
+		for (const DynamicString& searchDir : *buildOptions.cSearchDirectories)
 		{
 			char searchDirToArgument[MAX_PATH_LENGTH + 2];
 			makeIncludeArgument(searchDirToArgument, sizeof(searchDirToArgument),
@@ -1186,15 +1186,15 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 			searchDirArgs.push_back(globalSearchDirArgs.back().c_str());
 		}
 
-		std::vector<const char*> additionalOptions;
+		CStringArray additionalOptions;
 		additionalOptions.reserve(object->additionalOptions.size() +
 		                          buildOptions.compilerAdditionalOptions->size());
-		for (const std::string& option : object->additionalOptions)
+		for (const DynamicString& option : object->additionalOptions)
 		{
 			additionalOptions.push_back(option.c_str());
 		}
 
-		for (const std::string& option : *buildOptions.compilerAdditionalOptions)
+		for (const DynamicString& option : *buildOptions.compilerAdditionalOptions)
 		{
 			additionalOptions.push_back(option.c_str());
 		}
@@ -1204,8 +1204,8 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 		                                   *buildOptions.buildCommand;
 
 		// Annoying exception for MSVC not having spaces between some arguments
-		std::string* objectOutput = &object->filename;
-		std::string objectOutputOverride;
+		DynamicString* objectOutput = &object->filename;
+		DynamicString objectOutputOverride;
 		if (StrCompareIgnoreCase(buildCommand.fileToExecute.c_str(), "CL.exe") == 0)
 		{
 			char msvcObjectOutput[MAX_PATH_LENGTH] = {0};
@@ -1248,7 +1248,7 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 
 		// Can we use the cached version?
 		{
-			std::vector<std::string> headerSearchDirectories;
+			DynamicStringArray headerSearchDirectories;
 			{
 				headerSearchDirectories.reserve(object->headerSearchDirectories.size() +
 				                                buildOptions.cSearchDirectories->size() + 1);
@@ -1333,9 +1333,9 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 }
 
 bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildObjects,
-                       SharedBuildOptions& buildOptions, std::vector<std::string>& builtOutputs)
+                       SharedBuildOptions& buildOptions, DynamicStringArray& builtOutputs)
 {
-	std::string outputExecutableName;
+	DynamicString outputExecutableName;
 	if (!buildOptions.executableOutput->empty())
 	{
 		char outputExecutableFilename[MAX_PATH_LENGTH] = {0};
@@ -1368,7 +1368,7 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 		                                  outputExecutableName.c_str());
 	}
 
-	for (const std::string& staticLinkObject : *buildOptions.staticLinkObjects)
+	for (const DynamicString& staticLinkObject : *buildOptions.staticLinkObjects)
 	{
 		char foundFilePath[MAX_PATH_LENGTH] = {0};
 		if (searchForFileInPaths(staticLinkObject.c_str(), nullptr, buildOptions.librarySearchDirs,
@@ -1382,7 +1382,7 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 			    "warning: could not find static link object %s. Your build may become stale if "
 			    "that object has changed recently. It was looked for in the following paths:\n",
 			    staticLinkObject.c_str());
-			for (const std::string& searchPath : buildOptions.librarySearchDirs)
+			for (const DynamicString& searchPath : buildOptions.librarySearchDirs)
 			{
 				Logf("\t%s\n", searchPath.c_str());
 			}
@@ -1391,7 +1391,7 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 
 	int numObjectsToLink = buildObjects.size() + buildOptions.staticLinkObjects->size();
 
-	std::string finalOutputName;
+	DynamicString finalOutputName;
 	if (!buildOptions.executableOutput->empty())
 		finalOutputName = *buildOptions.executableOutput;
 	else
@@ -1400,13 +1400,13 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 	bool succeededBuild = false;
 	if (numObjectsToLink)
 	{
-		std::vector<const char*> objectsToLink;
+		CStringArray objectsToLink;
 		objectsToLink.reserve(numObjectsToLink);
 		for (BuildObject* object : buildObjects)
 		{
 			objectsToLink.push_back(object->filename.c_str());
 		}
-		for (const std::string& staticLinkObject : *buildOptions.staticLinkObjects)
+		for (const DynamicString& staticLinkObject : *buildOptions.staticLinkObjects)
 		{
 			objectsToLink.push_back(staticLinkObject.c_str());
 		}
@@ -1414,16 +1414,16 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 		// Copy it so hooks can modify it
 		ProcessCommand linkCommand = *buildOptions.linkCommand;
 
-		std::vector<std::string> executableOutputString;
+		DynamicStringArray executableOutputString;
 		executableOutputString.push_back(outputExecutableName);
 
 		// Various arguments need prefixes added. Do that here
-		std::vector<const char*> executableToArgs;
-		std::vector<const char*> librariesArgs;
-		std::vector<const char*> librarySearchDirsArgs;
-		std::vector<const char*> libraryRuntimeSearchDirsArgs;
-		std::vector<const char*> convertedLinkerArgs;
-		std::vector<const char*> compilerLinkArgs;
+		CStringArray executableToArgs;
+		CStringArray librariesArgs;
+		CStringArray librarySearchDirsArgs;
+		CStringArray libraryRuntimeSearchDirsArgs;
+		CStringArray convertedLinkerArgs;
+		CStringArray compilerLinkArgs;
 		BuildArgumentConverter convertedArguments[] = {
 		    {&executableOutputString, {}, &executableToArgs, makeExecutableOutputArgument},
 		    {&buildOptions.linkLibraries, {}, &librariesArgs, makeLinkLibraryArgument},
@@ -1564,7 +1564,7 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 	return true;
 }
 
-bool moduleManagerBuildAndLink(ModuleManager& manager, std::vector<std::string>& builtOutputs)
+bool moduleManagerBuildAndLink(ModuleManager& manager, DynamicStringArray& builtOutputs)
 {
 	if (!buildReadCacheFile(manager.buildOutputDir.c_str(), manager.cachedCommandCrcs,
 	                        manager.environment.sourceArtifactFileCrcs, manager.environment.loadedHeaderCrcCache))
@@ -1608,7 +1608,7 @@ void OnExecuteProcessOutput(const char* output)
 }
 
 bool moduleManagerExecuteBuiltOutputs(ModuleManager& manager,
-                                      const std::vector<std::string>& builtOutputs)
+                                      const DynamicStringArray& builtOutputs)
 {
 	if (logging.phases)
 		Log("\nExecute:\n");
@@ -1620,7 +1620,7 @@ bool moduleManagerExecuteBuiltOutputs(ModuleManager& manager,
 	}
 
 	// TODO: Allow user to forward arguments to executable
-	for (const std::string& output : builtOutputs)
+	for (const DynamicString& output : builtOutputs)
 	{
 		RunProcessArguments arguments = {};
 		// Need to use absolute path when executing

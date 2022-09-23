@@ -1,10 +1,11 @@
 #pragma once
 
-#include <algorithm>  // std::find
-#include <cstdio>     //  sprintf
-#include <string>
 #include <string.h>
 
+#include <algorithm>  // std::find
+#include <cstdio>     //  sprintf
+
+#include "DynamicString.hpp"
 #include "Exporting.hpp"
 
 #if defined(UNIX) || defined(MACOS)
@@ -94,5 +95,5 @@ uint32_t crc32_for_byte(uint32_t r);
 
 CAKELISP_API void crc32(const void* data, size_t n_bytes, uint32_t* crc);
 
-// Let this serve as more of a TODO to get rid of std::string
-extern std::string EmptyString;
+// Let this serve as more of a TODO to get rid of DynamicString
+extern DynamicString EmptyString;

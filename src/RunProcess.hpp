@@ -1,10 +1,11 @@
 #pragma once
 
+#include <vector>
+
+#include "DynamicArray.hpp"
+#include "DynamicString.hpp"
 #include "Exporting.hpp"
 #include "RunProcessEnums.hpp"
-
-#include <string>
-#include <vector>
 
 struct RunProcessArguments
 {
@@ -27,19 +28,19 @@ CAKELISP_API void waitForAllProcessesClosed(SubprocessOnOutputFunc onOutput);
 struct ProcessCommandArgument
 {
 	ProcessCommandArgumentType type;
-	std::string contents;
+	DynamicString contents;
 };
 
 struct ProcessCommand
 {
-	std::string fileToExecute;
+	DynamicString fileToExecute;
 	std::vector<ProcessCommandArgument> arguments;
 };
 
 struct ProcessCommandInput
 {
 	ProcessCommandArgumentType type;
-	std::vector<const char*> value;
+	CStringArray value;
 };
 
 void PrintProcessArguments(const char** processArguments);

@@ -5,6 +5,7 @@
 #include <cstring>
 #include <vector>
 
+#include "DynamicArray.hpp"
 #include "FileUtilities.hpp"
 #include "GeneratorHelpers.hpp"
 #include "Logging.hpp"
@@ -232,7 +233,7 @@ void convertBuildArguments(BuildArgumentConverter* argumentsToConvert, int numAr
 		argumentsToConvert[typeIndex].argumentsOut->resize(numStrings);
 
 		int currentString = 0;
-		for (const std::string& stringIn : *argumentsToConvert[typeIndex].stringsIn)
+		for (const DynamicString& stringIn : *argumentsToConvert[typeIndex].stringsIn)
 		{
 			if (argumentsToConvert[typeIndex].argumentConversionFunc)
 			{
@@ -447,7 +448,7 @@ static void buildWriteCacheFile(const char* buildOutputDir, ArtifactCrcTable& ca
 	for (ArtifactCrcTablePair& crcPair : newCommandCrcs)
 		outputCrcs[crcPair.first] = crcPair.second;
 
-	std::vector<Token> outputTokens;
+	TokenArray outputTokens;
 	const Token openParen = {TokenType_OpenParen, EmptyString, "Build.cpp", 1, 0, 0};
 	const Token closeParen = {TokenType_CloseParen, EmptyString, "Build.cpp", 1, 0, 0};
 	const Token commandCrcInvoke = {TokenType_Symbol, "command-crc", "Build.cpp", 1, 0, 0};
@@ -529,7 +530,7 @@ bool buildReadCacheFile(const char* buildOutputDir, ArtifactCrcTable& cachedComm
 	if (!fileExists(inputFilename))
 		return true;
 
-	const std::vector<Token>* tokens = nullptr;
+	const TokenArray* tokens = nullptr;
 	if (!moduleLoadTokenizeValidate(inputFilename, &tokens))
 	{
 		// moduleLoadTokenizeValidate deletes tokens on error
@@ -627,7 +628,7 @@ void buildReadMergeWriteCacheFile(const char* buildOutputDir, ArtifactCrcTable& 
 // objects is faster. We must find the absolute time because different build objects may be more
 // recently modified than others, so they shouldn't get built. If we wanted to early out, we cannot
 // share the cache because of this
-static bool AreIncludedHeadersModified_Recursive(const std::vector<std::string>& searchDirectories,
+static bool AreIncludedHeadersModified_Recursive(const DynamicStringArray& searchDirectories,
                                                  const char* filename, const char* includedInFile,
                                                  HeaderModificationTimeTable& isModifiedCache,
                                                  ArtifactCrcTable& loadedHeaderCrcCache,
@@ -835,7 +836,7 @@ bool cppFileNeedsBuild(EvaluatorEnvironment& environment, const char* sourceFile
                        const char* artifactFilename, const char** commandArguments,
                        ArtifactCrcTable& cachedCommandCrcs, ArtifactCrcTable& newCommandCrcs,
                        HeaderModificationTimeTable& headerModifiedCache,
-                       std::vector<std::string>& headerSearchDirectories)
+                       DynamicStringArray& headerSearchDirectories)
 {
 	uint32_t commandCrc = 0;
 	bool commandEqualsCached = commandEqualsCachedCommand(cachedCommandCrcs, artifactFilename,

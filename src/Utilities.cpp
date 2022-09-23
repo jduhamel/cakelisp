@@ -4,7 +4,7 @@
 
 #include "Logging.hpp"
 
-std::string EmptyString;
+DynamicString EmptyString;
 
 void printIndentToDepth(int depth)
 {

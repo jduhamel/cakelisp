@@ -33,7 +33,7 @@ static const char* g_environmentCompileTimeVariableDestroySignature = "('data (a
 
 GeneratorFunc findGenerator(EvaluatorEnvironment& environment, const char* functionName)
 {
-	GeneratorIterator findIt = environment.generators.find(std::string(functionName));
+	GeneratorIterator findIt = environment.generators.find(DynamicString(functionName));
 	if (findIt != environment.generators.end())
 		return findIt->second;
 	return nullptr;
@@ -41,7 +41,7 @@ GeneratorFunc findGenerator(EvaluatorEnvironment& environment, const char* funct
 
 static MacroFunc findMacro(EvaluatorEnvironment& environment, const char* functionName)
 {
-	MacroIterator findIt = environment.macros.find(std::string(functionName));
+	MacroIterator findIt = environment.macros.find(DynamicString(functionName));
 	if (findIt != environment.macros.end())
 		return findIt->second;
 	return nullptr;
@@ -50,7 +50,7 @@ static MacroFunc findMacro(EvaluatorEnvironment& environment, const char* functi
 void* findCompileTimeFunction(EvaluatorEnvironment& environment, const char* functionName)
 {
 	CompileTimeFunctionTableIterator findIt =
-	    environment.compileTimeFunctions.find(std::string(functionName));
+	    environment.compileTimeFunctions.find(DynamicString(functionName));
 	if (findIt != environment.compileTimeFunctions.end())
 		return findIt->second;
 	return nullptr;
@@ -116,7 +116,7 @@ const ObjectReferenceStatus* addObjectReference(EvaluatorEnvironment& environmen
                                                 ObjectReference& reference)
 {
 	// Default to the module requiring the reference, for top-level references
-	std::string definitionName = globalDefinitionName;
+	DynamicString definitionName = globalDefinitionName;
 	if (!reference.context.definitionName && reference.context.scope != EvaluatorScope_Module)
 		Log("error: addObjectReference() expects a definitionName\n");
 
@@ -258,7 +258,7 @@ bool GetCompileTimeVariable(EvaluatorEnvironment& environment, const char* name,
 // is unknown, add it to a list so EvaluateResolveReferences() can come back and decide what to do
 // with it. Only EvaluateResolveReferences() decides whether to create a C/C++ invocation
 bool HandleInvocation_Recursive(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                                const std::vector<Token>& tokens, int invocationStartIndex,
+                                const TokenArray& tokens, int invocationStartIndex,
                                 GeneratorOutput& output)
 {
 	const Token& invocationStart = tokens[invocationStartIndex];
@@ -271,11 +271,11 @@ bool HandleInvocation_Recursive(EvaluatorEnvironment& environment, const Evaluat
 	{
 		// We must use a separate vector for each macro because Token lists must be immutable. If
 		// they weren't, pointers to tokens would be invalidated
-		const std::vector<Token>* macroOutputTokens = nullptr;
+		const TokenArray* macroOutputTokens = nullptr;
 		bool macroSucceeded;
 		{
 			// Do NOT modify token lists after they are created. You can change the token contents
-			std::vector<Token>* macroOutputTokensNoConst_CREATIONONLY = new std::vector<Token>();
+			TokenArray* macroOutputTokensNoConst_CREATIONONLY = new TokenArray();
 
 			// Have the macro generate some code for us!
 			macroSucceeded = invokedMacro(environment, context, tokens, invocationStartIndex,
@@ -463,7 +463,7 @@ bool HandleInvocation_Recursive(EvaluatorEnvironment& environment, const Evaluat
 }
 
 int EvaluateGenerate_Recursive(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                               const std::vector<Token>& tokens, int startTokenIndex,
+                               const TokenArray& tokens, int startTokenIndex,
                                GeneratorOutput& output)
 {
 	// Note that in most cases, we will continue evaluation in order to turn up more errors
@@ -546,7 +546,7 @@ int EvaluateGenerate_Recursive(EvaluatorEnvironment& environment, const Evaluato
 
 // Delimiter template will be inserted between the outputs
 int EvaluateGenerateAll_Recursive(EvaluatorEnvironment& environment,
-                                  const EvaluatorContext& context, const std::vector<Token>& tokens,
+                                  const EvaluatorContext& context, const TokenArray& tokens,
                                   int startTokenIndex, GeneratorOutput& output)
 {
 	// Note that in most cases, we will continue evaluation in order to turn up more errors
@@ -603,7 +603,7 @@ int EvaluateGenerateAll_Recursive(EvaluatorEnvironment& environment,
 
 bool ReplaceAndEvaluateDefinition(EvaluatorEnvironment& environment,
                                   const char* definitionToReplaceName,
-                                  const std::vector<Token>& newDefinitionTokens)
+                                  const TokenArray& newDefinitionTokens)
 {
 	ObjectDefinitionMap::iterator findIt = environment.definitions.find(definitionToReplaceName);
 	if (findIt == environment.definitions.end())
@@ -656,7 +656,7 @@ bool ReplaceAndEvaluateDefinition(EvaluatorEnvironment& environment,
 }
 
 bool ClearAndEvaluateAtSplicePoint(EvaluatorEnvironment& environment, const char* splicePointName,
-                                   const std::vector<Token>* newSpliceTokens)
+                                   const TokenArray* newSpliceTokens)
 {
 	SplicePointTableIterator findIt = environment.splicePoints.find(splicePointName);
 	if (findIt == environment.splicePoints.end())
@@ -768,16 +768,16 @@ struct ComptimeBuildObject
 	int status = -1;
 	BuildStage stage = BuildStage_None;
 	bool hasAnyRefs = false;
-	std::string artifactsName;
-	std::string dynamicLibraryPath;
-	std::string sourceOutputName;
-	std::string buildObjectName;
-	std::vector<std::string> importLibraries;
+	DynamicString artifactsName;
+	DynamicString dynamicLibraryPath;
+	DynamicString sourceOutputName;
+	DynamicString buildObjectName;
+	DynamicStringArray importLibraries;
 	ObjectDefinition* definition = nullptr;
 };
 
-static std::vector<ObjectReference>* GetReferenceListFromReference(EvaluatorEnvironment& environment,
-                                       const char* referenceToResolve)
+static ObjectReferenceArray* GetReferenceListFromReference(EvaluatorEnvironment& environment,
+                                                           const char* referenceToResolve)
 {
 	ObjectReferencePoolMap::iterator referencePoolIt =
 	    environment.referencePools.find(referenceToResolve);
@@ -796,7 +796,7 @@ static int ReevaluateResolveReferences(EvaluatorEnvironment& environment,
 	int numReferencesResolved = 0;
 
 	// Resolve references
-	std::vector<ObjectReference>* references =
+	ObjectReferenceArray* references =
 	    GetReferenceListFromReference(environment, referenceToResolve);
 	if (!references)
 	{
@@ -899,7 +899,7 @@ bool ComptimePrepareHeaders(EvaluatorEnvironment& environment)
 	const char* outputDir = cakelispWorkingDir;
 	const char* combinedHeaderName = "CakelispComptime.hpp";
 
-	std::vector<std::string> headerSearchDirectories;
+	DynamicStringArray headerSearchDirectories;
 	{
 		// Need working dir to find cached file itself
 		headerSearchDirectories.push_back(".");
@@ -913,7 +913,7 @@ bool ComptimePrepareHeaders(EvaluatorEnvironment& environment)
 	char combinedHeaderRelativePath[MAX_PATH_LENGTH] = {0};
 	PrintfBuffer(combinedHeaderRelativePath, "%s/%s", outputDir, combinedHeaderName);
 
-	std::vector<const char*> headersToCombine(ArraySize(g_comptimeDefaultHeaders));
+	CStringArray headersToCombine(ArraySize(g_comptimeDefaultHeaders));
 	for (size_t i = 0; i < ArraySize(g_comptimeDefaultHeaders); ++i)
 		headersToCombine[i] = g_comptimeDefaultHeaders[i];
 
@@ -1051,8 +1051,8 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 	                                        !environment.comptimeCombinedHeaderFilename.empty();
 	const char* cakelispCombinedHeaderFilename = nullptr;
 	char usePrecompiledHeaderArgument[MAX_PATH_LENGTH] = {0};
-	std::vector<std::string> precompiledHeadersToIncludeStorage;
-	std::vector<const char*> precompiledHeadersToInclude;
+	DynamicStringArray precompiledHeadersToIncludeStorage;
+	CStringArray precompiledHeadersToInclude;
 	if (comptimeCanUsePrecompiledHeaders)
 	{
 		cakelispCombinedHeaderFilename = environment.comptimeCombinedHeaderFilename.c_str();
@@ -1065,7 +1065,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		precompiledHeadersToIncludeStorage.push_back("-include");
 		precompiledHeadersToIncludeStorage.push_back(cakelispCombinedHeaderFilename);
 		precompiledHeadersToInclude.reserve(precompiledHeadersToIncludeStorage.size());
-		for (const std::string& arg : precompiledHeadersToIncludeStorage)
+		for (const DynamicString& arg : precompiledHeadersToIncludeStorage)
 			precompiledHeadersToInclude.push_back(arg.c_str());
 	}
 
@@ -1260,7 +1260,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 
 		// Can we use the cached version?
 		{
-			std::vector<std::string> headerSearchDirectories;
+			DynamicStringArray headerSearchDirectories;
 			{
 				// Need working dir to find cached file itself
 				headerSearchDirectories.push_back(".");
@@ -1352,8 +1352,8 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		if (logging.buildProcess)
 			Logf("Compiled %s successfully\n", buildObject.definition->name.c_str());
 
-		std::vector<std::string> importLibraryPaths;
-		std::vector<std::string> importLibraries;
+		DynamicStringArray importLibraryPaths;
+		DynamicStringArray importLibraries;
 		// Need to be able to find imported dll import libraries
 		importLibraryPaths.push_back(cakelispWorkingDir);
 		PushBackAll(importLibraries, buildObject.importLibraries);
@@ -1373,8 +1373,8 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 			importLibraries.push_back("cakelisp.lib");
 		}
 
-		std::vector<const char*> importLibraryPathsArgs;
-		std::vector<const char*> importLibrariesArgs;
+		CStringArray importLibraryPathsArgs;
+		CStringArray importLibrariesArgs;
 		BuildArgumentConverter convertedArguments[] = {
 		    {&importLibraryPaths, {}, &importLibraryPathsArgs, makeImportLibraryPathArgument},
 		    {&importLibraries, {}, &importLibrariesArgs, nullptr}};
@@ -1914,7 +1914,7 @@ void environmentDestroyInvalidateTokens(EvaluatorEnvironment& environment)
 {
 	for (CompileTimeVariableTablePair& compileTimeVariablePair : environment.compileTimeVariables)
 	{
-		const std::string& destroyFuncName =
+		const DynamicString& destroyFuncName =
 		    compileTimeVariablePair.second.destroyCompileTimeFuncName;
 		if (!destroyFuncName.empty())
 		{
@@ -1923,7 +1923,7 @@ void environmentDestroyInvalidateTokens(EvaluatorEnvironment& environment)
 			void* destroyFunc = findCompileTimeFunction(environment, destroyFuncName.c_str());
 			if (destroyFunc)
 			{
-				static std::vector<Token> expectedSignature;
+				static TokenArray expectedSignature;
 				if (expectedSignature.empty())
 				{
 					if (!tokenizeLinePrintError(g_environmentCompileTimeVariableDestroySignature,
@@ -2000,7 +2000,7 @@ void environmentDestroyInvalidateTokens(EvaluatorEnvironment& environment)
 		delete splicePointPair.second.output;
 	}
 
-	for (const std::vector<Token>* comptimeTokens : environment.comptimeTokens)
+	for (const TokenArray* comptimeTokens : environment.comptimeTokens)
 		delete comptimeTokens;
 	environment.comptimeTokens.clear();
 }
@@ -2140,7 +2140,7 @@ bool canUseCachedFile(EvaluatorEnvironment& environment, const char* filename,
 }
 
 bool searchForFileInPaths(const char* shortPath, const char* encounteredInFile,
-                          const std::vector<std::string>& searchPaths, char* foundFilePathOut,
+                          const DynamicStringArray& searchPaths, char* foundFilePathOut,
                           int foundFilePathOutSize)
 {
 	// Check if the path is relative to the execution, or a full path already
@@ -2179,7 +2179,7 @@ bool searchForFileInPaths(const char* shortPath, const char* encounteredInFile,
 			Log("no)\n");
 	}
 
-	for (const std::string& path : searchPaths)
+	for (const DynamicString& path : searchPaths)
 	{
 		SafeSnprintf(foundFilePathOut, foundFilePathOutSize, "%s/%s", path.c_str(), shortPath);
 
@@ -2203,7 +2203,7 @@ bool searchForFileInPaths(const char* shortPath, const char* encounteredInFile,
 }
 
 bool searchForFileInPathsWithError(const char* shortPath, const char* encounteredInFile,
-                                   const std::vector<std::string>& searchPaths,
+                                   const DynamicStringArray& searchPaths,
                                    char* foundFilePathOut, int foundFilePathOutSize,
                                    const Token& blameToken)
 {
@@ -2213,7 +2213,7 @@ bool searchForFileInPathsWithError(const char* shortPath, const char* encountere
 		ErrorAtToken(blameToken, "file not found! Checked the following paths:");
 		Logf("Checked if relative to %s\n", encounteredInFile);
 		Log("Checked search paths:\n");
-		for (const std::string& path : searchPaths)
+		for (const DynamicString& path : searchPaths)
 		{
 			Logf("\t%s\n", path.c_str());
 		}
@@ -2274,7 +2274,7 @@ bool registerEvaluateGenerator(EvaluatorEnvironment& environment, const char* ge
 	return numErrors == 0;
 }
 
-bool AddCompileTimeHook(EvaluatorEnvironment& environment, std::vector<CompileTimeHook>* hookList,
+bool AddCompileTimeHook(EvaluatorEnvironment& environment, CompileTimeHookArray* hookList,
                         const char* expectedSignature, const char* compileTimeFunctionName,
                         void* hookFunction, int userPriority, const Token* blameToken)
 {
@@ -2286,7 +2286,7 @@ bool AddCompileTimeHook(EvaluatorEnvironment& environment, std::vector<CompileTi
 	}
 
 	// Check the signature so we can call it safely
-	std::vector<Token> expectedSignatureTokens;
+	TokenArray expectedSignatureTokens;
 	if (!tokenizeLinePrintError(expectedSignature, "Evaluator.cpp", __LINE__,
 	                            expectedSignatureTokens))
 		return false;
@@ -2315,7 +2315,7 @@ bool AddCompileTimeHook(EvaluatorEnvironment& environment, std::vector<CompileTi
 	return true;
 }
 
-bool StringOutputHasAnyMeaningfulOutput(const std::vector<StringOutput>* stringOutput,
+bool StringOutputHasAnyMeaningfulOutput(const StringOutputArray* stringOutput,
                                         bool isHeader)
 {
 	if (stringOutput->empty())
@@ -2327,7 +2327,7 @@ bool StringOutputHasAnyMeaningfulOutput(const std::vector<StringOutput>* stringO
 		{
 			if (output.spliceOutput)
 			{
-				const std::vector<StringOutput>* outputToCheck =
+				const StringOutputArray* outputToCheck =
 				    isHeader ? &output.spliceOutput->header : &output.spliceOutput->source;
 				bool spliceHadMeaningfulOutput =
 				    StringOutputHasAnyMeaningfulOutput(outputToCheck, isHeader);

@@ -23,7 +23,7 @@ int g_totalLinesTokenized = 0;
 
 // Returns nullptr if no errors, else the error text
 const char* tokenizeLine(const char* inputLine, const char* source, unsigned int lineNumber,
-                         std::vector<Token>& tokensOut)
+                         TokenArray& tokensOut)
 {
 	// For performance estimation only
 	++g_totalLinesTokenized;
@@ -182,7 +182,7 @@ const char* tokenizeLine(const char* inputLine, const char* source, unsigned int
 						if (previousToken.type == TokenType_StringMerge ||
 						    previousToken.type == TokenType_StringContinue)
 						{
-							std::string appendString;
+							DynamicString appendString;
 							CopyContentsAndReset(appendString);
 							previousToken.contents.append(appendString);
 							previousToken.type = TokenType_String;
@@ -310,7 +310,7 @@ const char* tokenizeLine(const char* inputLine, const char* source, unsigned int
 					if (previousToken.type != TokenType_HereString)
 						return "Here String mode was entered, but previous token is not a here-string";
 
-					std::string appendString;
+					DynamicString appendString;
 					CopyContentsAndReset(appendString);
 					previousToken.contents.append(appendString);
 					previousToken.type = TokenType_String;
@@ -348,7 +348,7 @@ const char* tokenizeLine(const char* inputLine, const char* source, unsigned int
 			case TokenizeState_StringContinue:
 			{
 				Token& previousToken = tokensOut.back();
-				std::string appendString;
+				DynamicString appendString;
 				CopyContentsAndReset(appendString);
 				previousToken.contents.append(appendString);
 				previousToken.type = TokenType_StringContinue;
@@ -358,7 +358,7 @@ const char* tokenizeLine(const char* inputLine, const char* source, unsigned int
 			case TokenizeState_HereString:
 			{
 				Token& previousToken = tokensOut.back();
-				std::string appendString;
+				DynamicString appendString;
 				CopyContentsAndReset(appendString);
 				previousToken.contents.append(appendString);
 				previousToken.type = TokenType_HereString;
@@ -372,7 +372,7 @@ const char* tokenizeLine(const char* inputLine, const char* source, unsigned int
 					if (previousToken.type == TokenType_StringMerge ||
 					    previousToken.type == TokenType_StringContinue)
 					{
-						std::string appendString;
+						DynamicString appendString;
 						CopyContentsAndReset(appendString);
 						previousToken.contents.append(appendString);
 						previousToken.type = TokenType_StringContinue;
@@ -421,7 +421,7 @@ const char* tokenTypeToString(TokenType type)
 	}
 }
 
-bool validateTokens(const std::vector<Token>& tokens)
+bool validateTokens(const TokenArray& tokens)
 {
 	int nestingDepth = 0;
 	const Token* lastTopLevelOpenParen = nullptr;
@@ -541,7 +541,7 @@ void printFormattedToken(FILE* fileOut, const Token& token)
 	}
 }
 
-static void printTokensInternal(FILE* fileOut, const std::vector<Token>& tokens, bool prettyPrint)
+static void printTokensInternal(FILE* fileOut, const TokenArray& tokens, bool prettyPrint)
 {
 	TokenType previousTokenType = TokenType_OpenParen;
 
@@ -590,17 +590,17 @@ static void printTokensInternal(FILE* fileOut, const std::vector<Token>& tokens,
 	fprintf(fileOut, "\n");
 }
 
-void printTokens(const std::vector<Token>& tokens)
+void printTokens(const TokenArray& tokens)
 {
 	printTokensInternal(stderr, tokens, /*prettyPrint=*/false);
 }
 
-void prettyPrintTokens(const std::vector<Token>& tokens)
+void prettyPrintTokens(const TokenArray& tokens)
 {
 	printTokensInternal(stderr, tokens, /*prettyPrint=*/true);
 }
 
-void prettyPrintTokensToFile(FILE* file, const std::vector<Token>& tokens)
+void prettyPrintTokensToFile(FILE* file, const TokenArray& tokens)
 {
 	printTokensInternal(file, tokens, /*prettyPrint=*/true);
 }
@@ -630,7 +630,7 @@ bool writeStringToBufferErrorToken(const char* str, char** at, char* bufferStart
 }
 
 bool tokenizeLinePrintError(const char* inputLine, const char* source, unsigned int lineNumber,
-                            std::vector<Token>& tokensOut)
+                            TokenArray& tokensOut)
 {
 	const char* error = tokenizeLine(inputLine, source, lineNumber, tokensOut);
 	if (error != nullptr)

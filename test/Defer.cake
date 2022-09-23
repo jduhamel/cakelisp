@@ -8,7 +8,7 @@
   (defer
     (free buffer)
     (fprintf stderr "Freed buffer\n"))
-  (defer (fprintf stderr "I could have dependend on buffer in my defer\n"))
+  (defer (fprintf stderr "I could have depended on buffer in my defer\n"))
   (each-in-range 5 i
     (var-cast-to another-buffer (addr char) (malloc 1024))
     (defer

@@ -20,7 +20,7 @@ void StripInvocation(int& startTokenIndex, int& endTokenIndex)
 
 // Note that the tokenizer should've already confirmed our parenthesis match, so we won't do
 // validation here
-int FindCloseParenTokenIndex(const std::vector<Token>& tokens, int startTokenIndex)
+int FindCloseParenTokenIndex(const TokenArray& tokens, int startTokenIndex)
 {
 	if (tokens[startTokenIndex].type != TokenType_OpenParen)
 		Log("Warning: FindCloseParenTokenIndex() expects to start on the opening parenthesis\n");
@@ -79,7 +79,7 @@ bool ExpectTokenType(const char* generatorName, const Token& token, TokenType ex
 }
 
 // Errors and returns false if out of invocation (or at closing paren)
-bool ExpectInInvocation(const char* message, const std::vector<Token>& tokens, int indexToCheck,
+bool ExpectInInvocation(const char* message, const TokenArray& tokens, int indexToCheck,
                         int endInvocationIndex)
 {
 	if (indexToCheck >= endInvocationIndex)
@@ -109,7 +109,7 @@ bool isSpecialSymbol(const Token& token)
 
 // This function would be simpler and faster if there was an actual syntax tree, because we wouldn't
 // be repeatedly traversing all the arguments
-int getArgument(const std::vector<Token>& tokens, int startTokenIndex, int desiredArgumentIndex,
+int getArgument(const TokenArray& tokens, int startTokenIndex, int desiredArgumentIndex,
                 int endTokenIndex)
 {
 	int currentArgumentIndex = 0;
@@ -131,7 +131,7 @@ int getArgument(const std::vector<Token>& tokens, int startTokenIndex, int desir
 	return -1;
 }
 
-int getExpectedArgument(const char* message, const std::vector<Token>& tokens, int startTokenIndex,
+int getExpectedArgument(const char* message, const TokenArray& tokens, int startTokenIndex,
                         int desiredArgumentIndex, int endTokenIndex)
 {
 	int argumentIndex = getArgument(tokens, startTokenIndex, desiredArgumentIndex, endTokenIndex);
@@ -142,7 +142,7 @@ int getExpectedArgument(const char* message, const std::vector<Token>& tokens, i
 	return argumentIndex;
 }
 
-int getNumArguments(const std::vector<Token>& tokens, int startTokenIndex, int endTokenIndex)
+int getNumArguments(const TokenArray& tokens, int startTokenIndex, int endTokenIndex)
 {
 	int currentArgumentIndex = 0;
 	for (int i = startTokenIndex + 1; i < endTokenIndex; ++i)
@@ -159,7 +159,7 @@ int getNumArguments(const std::vector<Token>& tokens, int startTokenIndex, int e
 	return currentArgumentIndex;
 }
 
-bool ExpectNumArguments(const std::vector<Token>& tokens, int startTokenIndex, int endTokenIndex,
+bool ExpectNumArguments(const TokenArray& tokens, int startTokenIndex, int endTokenIndex,
                         int numExpectedArguments)
 {
 	int numArguments = getNumArguments(tokens, startTokenIndex, endTokenIndex);
@@ -173,7 +173,7 @@ bool ExpectNumArguments(const std::vector<Token>& tokens, int startTokenIndex, i
 	return true;
 }
 
-bool isLastArgument(const std::vector<Token>& tokens, int startTokenIndex, int endTokenIndex)
+bool isLastArgument(const TokenArray& tokens, int startTokenIndex, int endTokenIndex)
 {
 	if (tokens[startTokenIndex].type == TokenType_OpenParen &&
 	    FindCloseParenTokenIndex(tokens, startTokenIndex) + 1 < endTokenIndex)
@@ -184,7 +184,7 @@ bool isLastArgument(const std::vector<Token>& tokens, int startTokenIndex, int e
 	return true;
 }
 
-int getNextArgument(const std::vector<Token>& tokens, int currentTokenIndex, int endArrayTokenIndex)
+int getNextArgument(const TokenArray& tokens, int currentTokenIndex, int endArrayTokenIndex)
 {
 	int nextArgStart = currentTokenIndex;
 	if (tokens[currentTokenIndex].type == TokenType_OpenParen)
@@ -198,7 +198,7 @@ int getNextArgument(const std::vector<Token>& tokens, int currentTokenIndex, int
 
 // If the current token is a scope, skip it. This is useful when a generator has already opened a
 // block, so it knows the scope comes from the generator invocation
-int blockAbsorbScope(const std::vector<Token>& tokens, int startBlockIndex)
+int blockAbsorbScope(const TokenArray& tokens, int startBlockIndex)
 {
 	if (tokens[startBlockIndex].type == TokenType_OpenParen &&
 	    tokens[startBlockIndex + 1].contents.compare("scope") == 0)
@@ -282,8 +282,8 @@ const Token* FindTokenBodyEnd(const Token* startToken)
 }
 
 static void CopyTokensWithMacrosExpanded_Recursive(const Token* startToken, const Token* endToken,
-                                                   const std::vector<MacroExpansion>& expansions,
-                                                   std::vector<Token>& tokensOut)
+                                                   const MacroExpansionArray& expansions,
+                                                   TokenArray& tokensOut)
 {
 	for (const Token* currentToken = startToken; currentToken <= endToken;)
 	{
@@ -319,7 +319,7 @@ static void CopyTokensWithMacrosExpanded_Recursive(const Token* startToken, cons
 }
 
 bool CreateDefinitionCopyMacroExpanded(const ObjectDefinition& definition,
-                                       std::vector<Token>& tokensOut)
+                                       TokenArray& tokensOut)
 {
 	if (!(definition.type == ObjectType_Function || definition.type == ObjectType_Variable))
 	{
@@ -358,7 +358,7 @@ bool CreateDefinitionCopyMacroExpanded(const ObjectDefinition& definition,
 // Token list manipulation
 //
 
-void PushBackTokenExpression(std::vector<Token>& output, const Token* startToken)
+void PushBackTokenExpression(TokenArray& output, const Token* startToken)
 {
 	if (!startToken)
 		return;
@@ -385,7 +385,7 @@ void PushBackTokenExpression(std::vector<Token>& output, const Token* startToken
 	}
 }
 
-void PushBackAllTokenExpressions(std::vector<Token>& output, const Token* startToken,
+void PushBackAllTokenExpressions(TokenArray& output, const Token* startToken,
                                  const Token* finalToken)
 {
 	if (!startToken)
@@ -417,7 +417,7 @@ void addModifierToStringOutput(StringOutput& operation, StringOutputModifierFlag
 	operation.modifiers = (StringOutputModifierFlags)((int)operation.modifiers | (int)flag);
 }
 
-void addStringOutput(std::vector<StringOutput>& output, const std::string& symbol,
+void addStringOutput(StringOutputArray& output, const DynamicString& symbol,
                      StringOutputModifierFlags modifiers, const Token* startToken)
 {
 	StringOutput newStringOutput = {};
@@ -429,7 +429,7 @@ void addStringOutput(std::vector<StringOutput>& output, const std::string& symbo
 	output.push_back(std::move(newStringOutput));
 }
 
-void addLangTokenOutput(std::vector<StringOutput>& output, StringOutputModifierFlags modifiers,
+void addLangTokenOutput(StringOutputArray& output, StringOutputModifierFlags modifiers,
                         const Token* startToken)
 {
 	StringOutput newStringOutput = {};
@@ -476,8 +476,8 @@ void addSpliceOutputWithModifiers(GeneratorOutput& output, GeneratorOutput* spli
 // Function signatures
 //
 
-bool parseFunctionSignature(const std::vector<Token>& tokens, int argsIndex,
-                            std::vector<FunctionArgumentTokens>& arguments, int& returnTypeStart,
+bool parseFunctionSignature(const TokenArray& tokens, int argsIndex,
+                            FunctionArgumentTokensArray& arguments, int& returnTypeStart,
                             int& isVariadicIndex)
 {
 	enum DefunState
@@ -574,7 +574,7 @@ bool parseFunctionSignature(const std::vector<Token>& tokens, int argsIndex,
 
 // startInvocationIndex is used for blaming on implicit return type
 bool outputFunctionReturnType(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                              const std::vector<Token>& tokens, GeneratorOutput& output,
+                              const TokenArray& tokens, GeneratorOutput& output,
                               int returnTypeStart, int startInvocationIndex, int endArgsIndex,
                               bool outputSource, bool outputHeader)
 {
@@ -606,8 +606,8 @@ bool outputFunctionReturnType(EvaluatorEnvironment& environment, const Evaluator
 			}
 		}
 
-		std::vector<StringOutput> typeOutput;
-		std::vector<StringOutput> afterNameOutput;
+		StringOutputArray typeOutput;
+		StringOutputArray afterNameOutput;
 		// Arrays cannot be return types, they must be * instead
 		if (!tokenizedCTypeToString_Recursive(environment, context, tokens, returnTypeStart,
 		                                      /*allowArray=*/false, typeOutput, afterNameOutput))
@@ -635,16 +635,16 @@ bool outputFunctionReturnType(EvaluatorEnvironment& environment, const Evaluator
 }
 
 bool outputFunctionArguments(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                             const std::vector<Token>& tokens, GeneratorOutput& output,
-                             const std::vector<FunctionArgumentTokens>& arguments,
+                             const TokenArray& tokens, GeneratorOutput& output,
+                             const FunctionArgumentTokensArray& arguments,
                              int isVariadicIndex, bool outputSource, bool outputHeader)
 {
 	int numFunctionArguments = arguments.size();
 	for (int i = 0; i < numFunctionArguments; ++i)
 	{
 		const FunctionArgumentTokens& arg = arguments[i];
-		std::vector<StringOutput> typeOutput;
-		std::vector<StringOutput> afterNameOutput;
+		StringOutputArray typeOutput;
+		StringOutputArray afterNameOutput;
 		bool typeValid =
 		    tokenizedCTypeToString_Recursive(environment, context, tokens, arg.startTypeIndex,
 		                                     /*allowArray=*/true, typeOutput, afterNameOutput);
@@ -711,9 +711,9 @@ bool outputFunctionArguments(EvaluatorEnvironment& environment, const EvaluatorC
 // come after the type. Returns whether parsing was successful
 bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
                                       const EvaluatorContext& context,
-                                      const std::vector<Token>& tokens, int startTokenIndex,
-                                      bool allowArray, std::vector<StringOutput>& typeOutput,
-                                      std::vector<StringOutput>& afterNameOutput)
+                                      const TokenArray& tokens, int startTokenIndex,
+                                      bool allowArray, StringOutputArray& typeOutput,
+                                      StringOutputArray& afterNameOutput)
 {
 	if (&typeOutput == &afterNameOutput)
 	{
@@ -977,7 +977,7 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 
 bool CompileTimeFunctionSignatureMatches(EvaluatorEnvironment& environment, const Token& errorToken,
                                          const char* compileTimeFunctionName,
-                                         const std::vector<Token>& expectedSignature)
+                                         const TokenArray& expectedSignature)
 {
 	CompileTimeFunctionMetadataTableIterator findIt =
 	    environment.compileTimeFunctionInfo.find(compileTimeFunctionName);
@@ -1030,7 +1030,7 @@ bool CompileTimeFunctionSignatureMatches(EvaluatorEnvironment& environment, cons
 //
 
 bool CStatementOutput(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                      const std::vector<Token>& tokens, int startTokenIndex,
+                      const TokenArray& tokens, int startTokenIndex,
                       const CStatementOperation* operation, int numOperations,
                       GeneratorOutput& output)
 {
@@ -1148,8 +1148,8 @@ bool CStatementOutput(EvaluatorEnvironment& environment, const EvaluatorContext&
 				                                         operation[i].argumentIndex, endTokenIndex);
 				if (startTypeIndex == -1)
 					return false;
-				std::vector<StringOutput> typeOutput;
-				std::vector<StringOutput> typeAfterNameOutput;
+				StringOutputArray typeOutput;
+				StringOutputArray typeAfterNameOutput;
 				if (!tokenizedCTypeToString_Recursive(environment, context, tokens, startTypeIndex,
 				                                      /*allowArray=*/false, typeOutput,
 				                                      typeAfterNameOutput))
@@ -1292,7 +1292,7 @@ bool CStatementOutput(EvaluatorEnvironment& environment, const EvaluatorContext&
 }
 
 bool CompileTimeEvaluateCondition(EvaluatorEnvironment& environment,
-                                  const EvaluatorContext& context, const std::vector<Token>& tokens,
+                                  const EvaluatorContext& context, const TokenArray& tokens,
                                   int startTokenIndex, bool& conditionResult)
 {
 	conditionResult = false;
@@ -1319,7 +1319,7 @@ bool CompileTimeEvaluateCondition(EvaluatorEnvironment& environment,
 // Tokenize-push
 //
 
-void TokenizePushSpliceArray(TokenizePushContext* spliceContext, const std::vector<Token>* tokens)
+void TokenizePushSpliceArray(TokenizePushContext* spliceContext, const TokenArray* tokens)
 {
 	TokenizePushSpliceArgument newArgument = {TokenizePushSpliceArgument_Array, nullptr,
 	                                          tokens};
@@ -1328,7 +1328,7 @@ void TokenizePushSpliceArray(TokenizePushContext* spliceContext, const std::vect
 
 void TokenizePushSpliceAllTokenExpressions(TokenizePushContext* spliceContext,
                                            const Token* startToken,
-                                           const std::vector<Token>* sourceTokens)
+                                           const TokenArray* sourceTokens)
 {
 	TokenizePushSpliceArgument newArgument = {TokenizePushSpliceArgument_AllExpressions, startToken,
 	                                          sourceTokens};
@@ -1352,7 +1352,7 @@ static const Token* getNextExpression(const Token* token)
 
 bool TokenizePushExecute(EvaluatorEnvironment& environment, const char* definitionName,
                          uint32_t tokensCrc, TokenizePushContext* spliceContext,
-                         std::vector<Token>& output)
+                         TokenArray& output)
 {
 	ObjectDefinition* definition = findObjectDefinition(environment, definitionName);
 	if (!definition)

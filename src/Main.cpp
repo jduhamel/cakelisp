@@ -3,6 +3,7 @@
 
 #include <vector>
 
+#include "DynamicArray.hpp"
 #include "FileUtilities.hpp"
 #include "Generators.hpp"
 #include "Logging.hpp"
@@ -254,7 +255,7 @@ int main(int numArguments, char* arguments[])
 		return 0;
 	}
 
-	std::vector<const char*> filesToEvaluate;
+	CStringArray filesToEvaluate;
 	for (int i = 1; i < numArguments; ++i)
 	{
 		if (isOptionArgument(arguments[i]))
@@ -325,7 +326,7 @@ int main(int numArguments, char* arguments[])
 	if (logging.phases)
 		Log("\nBuild:\n");
 
-	std::vector<std::string> builtOutputs;
+	DynamicStringArray builtOutputs;
 	if (!moduleManagerBuildAndLink(moduleManager, builtOutputs))
 	{
 		moduleManagerDestroy(moduleManager);

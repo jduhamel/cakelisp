@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "Build.hpp"
+#include "DynamicArray.hpp"
 #include "Evaluator.hpp"
 #include "Exporting.hpp"
 #include "ModuleManagerEnums.hpp"
@@ -13,7 +14,7 @@
 struct ModuleDependency
 {
 	ModuleDependencyType type;
-	std::string name;
+	DynamicString name;
 	const Token* blameToken;
 };
 
@@ -23,11 +24,11 @@ typedef bool (*ModulePreBuildHook)(ModuleManager& manager, Module* module);
 
 struct ModuleExportScope
 {
-	const std::vector<Token>* tokens;
+	const TokenArray* tokens;
 	int startTokenIndex; // Start of (export) invocation, not eval statements (for easier errors)
 
 	// Prevent double-evaluation
-	std::unordered_map<std::string, int> modulesEvaluatedExport;
+	std::unordered_map<DynamicString, int> modulesEvaluatedExport;
 };
 
 struct CakelispDeferredImport
@@ -42,10 +43,10 @@ struct CakelispDeferredImport
 struct Module
 {
 	const char* filename;
-	const std::vector<Token>* tokens;
+	const TokenArray* tokens;
 	GeneratorOutput* generatedOutput;
-	std::string sourceOutputName;
-	std::string headerOutputName;
+	DynamicString sourceOutputName;
+	DynamicString headerOutputName;
 
 	std::vector<CakelispDeferredImport> cakelispImports;
 
@@ -63,17 +64,17 @@ struct Module
 	// Build system
 	std::vector<ModuleDependency> dependencies;
 
-	std::vector<std::string> cSearchDirectories;
-	std::vector<std::string> additionalBuildOptions;
+	DynamicStringArray cSearchDirectories;
+	DynamicStringArray additionalBuildOptions;
 
-	std::vector<std::string> librarySearchDirectories;
-	std::vector<std::string> libraryRuntimeSearchDirectories;
-	std::vector<std::string> libraryDependencies;
+	DynamicStringArray librarySearchDirectories;
+	DynamicStringArray libraryRuntimeSearchDirectories;
+	DynamicStringArray libraryDependencies;
 
 	// compilerLinkOptions goes to e.g. G++ to set up arguments to the actual linker.
 	// toLinkerOptions is forwarded to e.g. ld directly, not to G++
-	std::vector<std::string> compilerLinkOptions;
-	std::vector<std::string> toLinkerOptions;
+	DynamicStringArray compilerLinkOptions;
+	DynamicStringArray toLinkerOptions;
 
 	// Do not build or link this module. Useful both for compile-time only files (which error
 	// because they are empty files) and for files only evaluated for their declarations (e.g. if
@@ -88,7 +89,7 @@ struct Module
 	// This doesn't really make sense
 	// ProcessCommand buildTimeLinkCommand;
 
-	std::vector<CompileTimeHook> preBuildHooks;
+	CompileTimeHookArray preBuildHooks;
 };
 
 struct ModuleManager
@@ -101,7 +102,7 @@ struct ModuleManager
 
 	// Cached directory, not necessarily the final artifacts directory (e.g. executable-output
 	// option sets different location for the final executable)
-	std::string buildOutputDir;
+	DynamicString buildOutputDir;
 
 	// If an existing cached build was run, check the current build's commands against the previous
 	// commands via CRC comparison. This ensures changing commands will cause rebuilds
@@ -119,15 +120,15 @@ CAKELISP_API void moduleManagerDestroyKeepDynLibs(ModuleManager& manager);
 // Note that this will close all dynamic libraries
 CAKELISP_API void moduleManagerDestroy(ModuleManager& manager);
 
-bool moduleLoadTokenizeValidate(const char* filename, const std::vector<Token>** tokensOut);
+bool moduleLoadTokenizeValidate(const char* filename, const TokenArray** tokensOut);
 CAKELISP_API bool moduleManagerAddEvaluateFile(ModuleManager& manager, const char* filename,
                                                Module** moduleOut);
 CAKELISP_API bool moduleManagerEvaluateResolveReferences(ModuleManager& manager);
 CAKELISP_API bool moduleManagerWriteGeneratedOutput(ModuleManager& manager);
 CAKELISP_API bool moduleManagerBuildAndLink(ModuleManager& manager,
-                                            std::vector<std::string>& builtOutputs);
+                                            DynamicStringArray& builtOutputs);
 CAKELISP_API bool moduleManagerExecuteBuiltOutputs(ModuleManager& manager,
-                                                   const std::vector<std::string>& builtOutputs);
+                                                   const DynamicStringArray& builtOutputs);
 
 // Initializes a normal environment and outputs all generators available to it
 void listBuiltInGenerators();

@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "ConverterEnums.hpp"
+#include "DynamicArray.hpp"
 #include "EvaluatorEnums.hpp"
 #include "WriterEnums.hpp"
 
@@ -42,4 +43,4 @@ bool writeGeneratorOutput(const GeneratorOutput& generatedOutput,
 
 // Create combinedHeaderFilename which is a header that includes headersToInclude
 bool writeCombinedHeader(const char* combinedHeaderFilename,
-                         std::vector<const char*>& headersToInclude);
+                         CStringArray& headersToInclude);

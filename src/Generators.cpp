@@ -18,11 +18,11 @@
 const int EXPORT_SCOPE_START_EVAL_OFFSET = 2;
 
 typedef bool (*ProcessCommandOptionFunc)(EvaluatorEnvironment& environment,
-                                         const std::vector<Token>& tokens, int startTokenIndex,
+                                         const TokenArray& tokens, int startTokenIndex,
                                          ProcessCommand* command);
 
 bool SetProcessCommandFileToExec(EvaluatorEnvironment& environment,
-                                 const std::vector<Token>& tokens, int startTokenIndex,
+                                 const TokenArray& tokens, int startTokenIndex,
                                  ProcessCommand* command)
 {
 	int endInvocationIndex = FindCloseParenTokenIndex(tokens, startTokenIndex);
@@ -40,7 +40,7 @@ bool SetProcessCommandFileToExec(EvaluatorEnvironment& environment,
 	return true;
 }
 
-bool SetProcessCommandArguments(EvaluatorEnvironment& environment, const std::vector<Token>& tokens,
+bool SetProcessCommandArguments(EvaluatorEnvironment& environment, const TokenArray& tokens,
                                 int startTokenIndex, ProcessCommand* command)
 {
 	command->arguments.clear();
@@ -119,7 +119,7 @@ bool SetProcessCommandArguments(EvaluatorEnvironment& environment, const std::ve
 }
 
 bool SetCakelispOption(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                       const std::vector<Token>& tokens, int startTokenIndex,
+                       const TokenArray& tokens, int startTokenIndex,
                        GeneratorOutput& output)
 {
 	// Don't let the user think this function can be called during comptime
@@ -137,7 +137,7 @@ bool SetCakelispOption(EvaluatorEnvironment& environment, const EvaluatorContext
 	struct
 	{
 		const char* option;
-		std::string* output;
+		DynamicString* output;
 	} stringOptions[] = {
 		{"cakelisp-src-dir", &environment.cakelispSrcDir},
 		{"cakelisp-lib-dir", &environment.cakelispLibDir},
@@ -245,7 +245,7 @@ bool SetCakelispOption(EvaluatorEnvironment& environment, const EvaluatorContext
 }
 
 bool SetModuleOption(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                     const std::vector<Token>& tokens, int startTokenIndex, GeneratorOutput& output)
+                     const TokenArray& tokens, int startTokenIndex, GeneratorOutput& output)
 {
 	// Don't let the user think this function can be called during comptime
 	if (!ExpectEvaluatorScope("set-module-option", tokens[startTokenIndex], context,
@@ -307,7 +307,7 @@ bool SetModuleOption(EvaluatorEnvironment& environment, const EvaluatorContext& 
 }
 
 bool AddCompileTimeHookGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                                 const std::vector<Token>& tokens, int startTokenIndex,
+                                 const TokenArray& tokens, int startTokenIndex,
                                  GeneratorOutput& output)
 {
 	// Don't let the user think this function can be called during comptime
@@ -438,7 +438,7 @@ bool AddCompileTimeHookGenerator(EvaluatorEnvironment& environment, const Evalua
 }
 
 bool AddStringOptionsGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                               const std::vector<Token>& tokens, int startTokenIndex,
+                               const TokenArray& tokens, int startTokenIndex,
                                GeneratorOutput& output)
 {
 	// Don't let the user think this function can be called during comptime
@@ -457,7 +457,7 @@ bool AddStringOptionsGenerator(EvaluatorEnvironment& environment, const Evaluato
 	struct StringOptionList
 	{
 		const char* name;
-		std::vector<std::string>* stringList;
+		DynamicStringArray* stringList;
 	};
 	const StringOptionList possibleDestinations[] = {
 	    {"add-cakelisp-search-directory", &environment.searchPaths},
@@ -508,7 +508,7 @@ bool AddStringOptionsGenerator(EvaluatorEnvironment& environment, const Evaluato
 			return false;
 
 		bool found = false;
-		for (const std::string& existingValue : *destination->stringList)
+		for (const DynamicString& existingValue : *destination->stringList)
 		{
 			if (currentToken.contents.compare(existingValue) == 0)
 			{
@@ -531,7 +531,7 @@ bool AddStringOptionsGenerator(EvaluatorEnvironment& environment, const Evaluato
 
 // Only adds additional validation before AddStringOptionsGenerator()
 bool AddBuildConfigLabelGenerator(EvaluatorEnvironment& environment,
-                                  const EvaluatorContext& context, const std::vector<Token>& tokens,
+                                  const EvaluatorContext& context, const TokenArray& tokens,
                                   int startTokenIndex, GeneratorOutput& output)
 {
 	// Don't let the user think this function can be called during comptime
@@ -551,7 +551,7 @@ bool AddBuildConfigLabelGenerator(EvaluatorEnvironment& environment,
 }
 
 bool SkipBuildGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                        const std::vector<Token>& tokens, int startTokenIndex,
+                        const TokenArray& tokens, int startTokenIndex,
                         GeneratorOutput& output)
 {
 	// Don't let the user think this function can be called during comptime
@@ -573,7 +573,7 @@ bool SkipBuildGenerator(EvaluatorEnvironment& environment, const EvaluatorContex
 // Allows users to rename built-in generators, making it possible to then define macros or
 // generators as replacements.
 bool RenameBuiltinGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                            const std::vector<Token>& tokens, int startTokenIndex,
+                            const TokenArray& tokens, int startTokenIndex,
                             GeneratorOutput& output)
 {
 	int endInvocationIndex = FindCloseParenTokenIndex(tokens, startTokenIndex);
@@ -642,7 +642,7 @@ enum ImportState
 };
 
 bool ImportGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                     const std::vector<Token>& tokens, int startTokenIndex, GeneratorOutput& output)
+                     const TokenArray& tokens, int startTokenIndex, GeneratorOutput& output)
 {
 	if (!ExpectEvaluatorScope("import", tokens[startTokenIndex], context, EvaluatorScope_Module))
 		return false;
@@ -767,7 +767,7 @@ bool ImportGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& 
 		bool shouldIncludeHeader = state != CompTimeOnly && state != DefinitionsOnly;
 		if (shouldIncludeHeader)
 		{
-			std::vector<StringOutput>& outputDestination =
+			StringOutputArray& outputDestination =
 			    state == WithDefinitions ? output.source : output.header;
 
 			// #include <stdio.h> is passed in as "<stdio.h>", so we need a special case (no quotes)
@@ -849,7 +849,7 @@ bool ImportGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& 
 }
 
 bool AddDependencyGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                            const std::vector<Token>& tokens, int startTokenIndex,
+                            const TokenArray& tokens, int startTokenIndex,
                             GeneratorOutput& output)
 {
 	// Don't let the user think this function can be called during comptime
@@ -890,7 +890,7 @@ bool AddDependencyGenerator(EvaluatorEnvironment& environment, const EvaluatorCo
 }
 
 bool CPreprocessorDefineGenerator(EvaluatorEnvironment& environment,
-                                  const EvaluatorContext& context, const std::vector<Token>& tokens,
+                                  const EvaluatorContext& context, const TokenArray& tokens,
                                   int startTokenIndex, GeneratorOutput& output)
 {
 	if (IsForbiddenEvaluatorScope("c-preprocessor-define", tokens[startTokenIndex], context,
@@ -911,7 +911,7 @@ bool CPreprocessorDefineGenerator(EvaluatorEnvironment& environment,
 	bool isGlobal =
 	    tokens[startTokenIndex + 1].contents.compare("c-preprocessor-define-global") == 0;
 
-	std::vector<StringOutput>& outputDest = isGlobal ? output.header : output.source;
+	StringOutputArray& outputDest = isGlobal ? output.header : output.source;
 
 	if (value)
 	{
@@ -934,7 +934,7 @@ bool CPreprocessorDefineGenerator(EvaluatorEnvironment& environment,
 }
 
 bool DefunGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                    const std::vector<Token>& tokens, int startTokenIndex, GeneratorOutput& output)
+                    const TokenArray& tokens, int startTokenIndex, GeneratorOutput& output)
 {
 	if (!ExpectEvaluatorScope("defun", tokens[startTokenIndex], context, EvaluatorScope_Module))
 		return false;
@@ -1000,7 +1000,7 @@ bool DefunGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& c
 
 	int returnTypeStart = -1;
 	int isVariadicIndex = -1;
-	std::vector<FunctionArgumentTokens> arguments;
+	FunctionArgumentTokensArray arguments;
 	if (!parseFunctionSignature(tokens, argsIndex, arguments, returnTypeStart, isVariadicIndex))
 		return false;
 
@@ -1050,7 +1050,7 @@ bool DefunGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& c
 	                             /*outputHeader=*/shouldDeclare))
 		return false;
 
-	std::vector<FunctionArgumentMetadata> argumentsMetadata;
+	FunctionArgumentMetadataArray argumentsMetadata;
 	for (FunctionArgumentTokens& arg : arguments)
 	{
 		const Token* startTypeToken = &tokens[arg.startTypeIndex];
@@ -1099,7 +1099,7 @@ bool DefunGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& c
 
 bool DefFunctionSignatureGenerator(EvaluatorEnvironment& environment,
                                    const EvaluatorContext& context,
-                                   const std::vector<Token>& tokens, int startTokenIndex,
+                                   const TokenArray& tokens, int startTokenIndex,
                                    GeneratorOutput& output)
 {
 	if (IsForbiddenEvaluatorScope("def-function-signature", tokens[startTokenIndex], context,
@@ -1135,11 +1135,11 @@ bool DefFunctionSignatureGenerator(EvaluatorEnvironment& environment,
 		return false;
 	}
 
-	std::vector<StringOutput>& outputDest = isModuleLocal ? output.source : output.header;
+	StringOutputArray& outputDest = isModuleLocal ? output.source : output.header;
 
 	int returnTypeStart = -1;
 	int isVariadicIndex = -1;
-	std::vector<FunctionArgumentTokens> arguments;
+	FunctionArgumentTokensArray arguments;
 	if (!parseFunctionSignature(tokens, argsIndex, arguments, returnTypeStart, isVariadicIndex))
 		return false;
 
@@ -1173,7 +1173,7 @@ bool DefFunctionSignatureGenerator(EvaluatorEnvironment& environment,
 // Surprisingly simple: slap in the name, open parens, then eval arguments one by one and
 // comma-delimit them. This is for non-hot-reloadable functions (static invocation)
 bool FunctionInvocationGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                                 const std::vector<Token>& tokens, int startTokenIndex,
+                                 const TokenArray& tokens, int startTokenIndex,
                                  GeneratorOutput& output)
 {
 	// We can't expect any scope because C preprocessor macros can be called in any scope
@@ -1210,7 +1210,7 @@ bool FunctionInvocationGenerator(EvaluatorEnvironment& environment, const Evalua
 // Handles both uninitialized and initialized variables as well as global and static
 // Module-local variables are automatically marked as static
 bool VariableDeclarationGenerator(EvaluatorEnvironment& environment,
-                                  const EvaluatorContext& context, const std::vector<Token>& tokens,
+                                  const EvaluatorContext& context, const TokenArray& tokens,
                                   int startTokenIndex, GeneratorOutput& output)
 {
 	if (IsForbiddenEvaluatorScope("variable declaration", tokens[startTokenIndex], context,
@@ -1244,8 +1244,8 @@ bool VariableDeclarationGenerator(EvaluatorEnvironment& environment,
 	if (typeIndex == -1)
 		return false;
 
-	std::vector<StringOutput> typeOutput;
-	std::vector<StringOutput> typeAfterNameOutput;
+	StringOutputArray typeOutput;
+	StringOutputArray typeAfterNameOutput;
 	// Arrays cannot be return types, they must be * instead
 	if (!tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
 	                                      /*allowArray=*/true, typeOutput, typeAfterNameOutput))
@@ -1343,7 +1343,7 @@ bool VariableDeclarationGenerator(EvaluatorEnvironment& environment,
 }
 
 bool ArrayAccessGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                          const std::vector<Token>& tokens, int startTokenIndex,
+                          const TokenArray& tokens, int startTokenIndex,
                           GeneratorOutput& output)
 {
 	// This doesn't mean (at) can't be an lvalue
@@ -1458,7 +1458,7 @@ static ComptimeTokenArgContainedType ComptimeParseTokenArgumentType(const Token&
 // A domain-specific language for easily extracting and validating tokens from token array
 // Comptime functions have hard-coded signatures, so "arguments" are actually extracted in the body
 // Wow, this is brutal. Great feature, ugly implementation
-static bool ComptimeGenerateTokenArguments(const std::vector<Token>& tokens, int startArgsIndex,
+static bool ComptimeGenerateTokenArguments(const TokenArray& tokens, int startArgsIndex,
                                            GeneratorOutput& output)
 {
 	if (!ExpectTokenType("token arguments", tokens[startArgsIndex], TokenType_OpenParen))
@@ -1783,7 +1783,7 @@ static bool ComptimeGenerateTokenArguments(const std::vector<Token>& tokens, int
 
 // TODO Consider merging with defgenerator?
 bool DefMacroGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                       const std::vector<Token>& tokens, int startTokenIndex,
+                       const TokenArray& tokens, int startTokenIndex,
                        GeneratorOutput& output)
 {
 	if (!ExpectEvaluatorScope("defmacro", tokens[startTokenIndex], context, EvaluatorScope_Module))
@@ -1853,7 +1853,7 @@ bool DefMacroGenerator(EvaluatorEnvironment& environment, const EvaluatorContext
 	// TODO: Output macro arguments with proper output calls
 	addStringOutput(compTimeOutput->source,
 	                "EvaluatorEnvironment& environment, const EvaluatorContext& context, const "
-	                "std::vector<Token>& tokens, int startTokenIndex, std::vector<Token>& output",
+	                "TokenArray& tokens, int startTokenIndex, TokenArray& output",
 	                StringOutMod_None, &argsStart);
 
 	int endArgsIndex = FindCloseParenTokenIndex(tokens, argsIndex);
@@ -1888,7 +1888,7 @@ bool DefMacroGenerator(EvaluatorEnvironment& environment, const EvaluatorContext
 
 // Essentially the same as DefMacro, though I could see them diverging or merging
 bool DefGeneratorGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                           const std::vector<Token>& tokens, int startTokenIndex,
+                           const TokenArray& tokens, int startTokenIndex,
                            GeneratorOutput& output)
 {
 	if (!ExpectEvaluatorScope("defgenerator", tokens[startTokenIndex], context,
@@ -1952,7 +1952,7 @@ bool DefGeneratorGenerator(EvaluatorEnvironment& environment, const EvaluatorCon
 	// TODO: Output generator arguments with proper output calls
 	addStringOutput(compTimeOutput->source,
 	                "EvaluatorEnvironment& environment, const EvaluatorContext& context, const "
-	                "std::vector<Token>& tokens, int startTokenIndex, GeneratorOutput& output",
+	                "TokenArray& tokens, int startTokenIndex, GeneratorOutput& output",
 	                StringOutMod_None, &argsStart);
 
 	int endArgsIndex = FindCloseParenTokenIndex(tokens, argsIndex);
@@ -1984,7 +1984,7 @@ bool DefGeneratorGenerator(EvaluatorEnvironment& environment, const EvaluatorCon
 }
 
 bool DefStructGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                        const std::vector<Token>& tokens, int startTokenIndex,
+                        const TokenArray& tokens, int startTokenIndex,
                         GeneratorOutput& output)
 {
 	if (IsForbiddenEvaluatorScope("defstruct", tokens[startTokenIndex], context,
@@ -2002,7 +2002,7 @@ bool DefStructGenerator(EvaluatorEnvironment& environment, const EvaluatorContex
 	bool isGlobal = context.scope == EvaluatorScope_Module &&
 	                tokens[startTokenIndex + 1].contents.compare("defstruct") == 0;
 
-	std::vector<StringOutput>& outputDest = isGlobal ? output.header : output.source;
+	StringOutputArray& outputDest = isGlobal ? output.header : output.source;
 
 	addStringOutput(outputDest, "typedef struct", StringOutMod_SpaceAfter, &tokens[startTokenIndex]);
 
@@ -2037,8 +2037,8 @@ bool DefStructGenerator(EvaluatorEnvironment& environment, const EvaluatorContex
 		{
 			// Output finished member
 
-			std::vector<StringOutput> typeOutput;
-			std::vector<StringOutput> typeAfterNameOutput;
+			StringOutputArray typeOutput;
+			StringOutputArray typeAfterNameOutput;
 			// Arrays cannot be return types, they must be * instead
 			if (!tokenizedCTypeToString_Recursive(
 			        environment, context, tokens, currentMember.typeStart,
@@ -2082,7 +2082,7 @@ bool DefStructGenerator(EvaluatorEnvironment& environment, const EvaluatorContex
 }
 
 bool IfGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                 const std::vector<Token>& tokens, int startTokenIndex, GeneratorOutput& output)
+                 const TokenArray& tokens, int startTokenIndex, GeneratorOutput& output)
 {
 	if (!ExpectEvaluatorScope("if", tokens[startTokenIndex], context, EvaluatorScope_Body))
 		return false;
@@ -2171,7 +2171,7 @@ bool IfGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& cont
 }
 
 bool ConditionGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                        const std::vector<Token>& tokens, int startTokenIndex,
+                        const TokenArray& tokens, int startTokenIndex,
                         GeneratorOutput& output)
 {
 	if (!ExpectEvaluatorScope("cond", tokens[startTokenIndex], context, EvaluatorScope_Body))
@@ -2259,7 +2259,7 @@ bool ConditionGenerator(EvaluatorEnvironment& environment, const EvaluatorContex
 }
 
 bool ObjectPathGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                         const std::vector<Token>& tokens, int startTokenIndex,
+                         const TokenArray& tokens, int startTokenIndex,
                          GeneratorOutput& output)
 {
 	int endInvocationIndex = FindCloseParenTokenIndex(tokens, startTokenIndex);
@@ -2318,7 +2318,7 @@ bool ObjectPathGenerator(EvaluatorEnvironment& environment, const EvaluatorConte
 }
 
 static bool DefTypeAliasGenerator(EvaluatorEnvironment& environment,
-                                  const EvaluatorContext& context, const std::vector<Token>& tokens,
+                                  const EvaluatorContext& context, const TokenArray& tokens,
                                   int startTokenIndex, GeneratorOutput& output)
 {
 	int endInvocationIndex = FindCloseParenTokenIndex(tokens, startTokenIndex);
@@ -2337,8 +2337,8 @@ static bool DefTypeAliasGenerator(EvaluatorEnvironment& environment,
 
 	bool isGlobal = invocationToken.contents.compare("def-type-alias-global") == 0;
 
-	std::vector<StringOutput> typeOutput;
-	std::vector<StringOutput> typeAfterNameOutput;
+	StringOutputArray typeOutput;
+	StringOutputArray typeAfterNameOutput;
 	if (!(tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex, true,
 	                                       typeOutput, typeAfterNameOutput)))
 	{
@@ -2346,7 +2346,7 @@ static bool DefTypeAliasGenerator(EvaluatorEnvironment& environment,
 	}
 	addModifierToStringOutput(typeOutput.back(), StringOutMod_SpaceAfter);
 
-	std::vector<StringOutput>& outputDest = isGlobal ? output.header : output.source;
+	StringOutputArray& outputDest = isGlobal ? output.header : output.source;
 
 	NameStyleSettings nameStyle;
 	char convertedName[MAX_NAME_LENGTH] = {0};
@@ -2363,13 +2363,13 @@ static bool DefTypeAliasGenerator(EvaluatorEnvironment& environment,
 
 // Don't evaluate anything in me. Essentially a block comment
 bool IgnoreGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                     const std::vector<Token>& tokens, int startTokenIndex, GeneratorOutput& output)
+                     const TokenArray& tokens, int startTokenIndex, GeneratorOutput& output)
 {
 	return true;
 }
 
 bool TokenizePushGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                           const std::vector<Token>& tokens, int startTokenIndex,
+                           const TokenArray& tokens, int startTokenIndex,
                            GeneratorOutput& output)
 {
 	if (!ExpectEvaluatorScope("tokenize-push", tokens[startTokenIndex], context,
@@ -2393,12 +2393,12 @@ bool TokenizePushGenerator(EvaluatorEnvironment& environment, const EvaluatorCon
 	// Start off with a good token to refer back to in case of problems. In this case, use
 	// "tokenize-push" which will tell the reader outputEvalHandle is created by the invocation
 	// TODO: This token can't actually be referred to later. Rather than passing a token, take a
-	// std::string instead?
+	// DynamicString instead?
 	Token evaluateOutputTempVar = tokens[startTokenIndex + 1];
 	MakeContextUniqueSymbolName(environment, context, "outputEvalHandle", &evaluateOutputTempVar);
 	// Evaluate output variable
 	{
-		addStringOutput(output.source, "std::vector<Token>&", StringOutMod_SpaceAfter,
+		addStringOutput(output.source, "TokenArray&", StringOutMod_SpaceAfter,
 		                &tokens[startTokenIndex + 1]);
 		addStringOutput(output.source, evaluateOutputTempVar.contents, StringOutMod_SpaceAfter,
 		                &tokens[startTokenIndex + 1]);
@@ -2602,7 +2602,7 @@ bool TokenizePushGenerator(EvaluatorEnvironment& environment, const EvaluatorCon
 // Compile-time conditional compilation (similar to C preprocessor #if)
 //
 bool ComptimeErrorGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                            const std::vector<Token>& tokens, int startTokenIndex,
+                            const TokenArray& tokens, int startTokenIndex,
                             GeneratorOutput& output)
 {
 	int endInvocationIndex = FindCloseParenTokenIndex(tokens, startTokenIndex);
@@ -2617,7 +2617,7 @@ bool ComptimeErrorGenerator(EvaluatorEnvironment& environment, const EvaluatorCo
 }
 
 bool ComptimeCondGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                           const std::vector<Token>& tokens, int startTokenIndex,
+                           const TokenArray& tokens, int startTokenIndex,
                            GeneratorOutput& output)
 {
 	int endInvocationIndex = FindCloseParenTokenIndex(tokens, startTokenIndex);
@@ -2691,7 +2691,7 @@ bool ComptimeCondGenerator(EvaluatorEnvironment& environment, const EvaluatorCon
 
 bool ComptimeDefineSymbolGenerator(EvaluatorEnvironment& environment,
                                    const EvaluatorContext& context,
-                                   const std::vector<Token>& tokens, int startTokenIndex,
+                                   const TokenArray& tokens, int startTokenIndex,
                                    GeneratorOutput& output)
 {
 	int endInvocationIndex = FindCloseParenTokenIndex(tokens, startTokenIndex);
@@ -2714,7 +2714,7 @@ bool ComptimeDefineSymbolGenerator(EvaluatorEnvironment& environment,
 
 // Export works like a delayed evaluate where it is evaluated within each importing module
 bool ExportScopeGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                          const std::vector<Token>& tokens, int startTokenIndex,
+                          const TokenArray& tokens, int startTokenIndex,
                           GeneratorOutput& output)
 {
 	// Don't let the user think this function can be called during comptime/runtime
@@ -2764,7 +2764,7 @@ bool ExportScopeGenerator(EvaluatorEnvironment& environment, const EvaluatorCont
 }
 
 bool SplicePointGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                          const std::vector<Token>& tokens, int startTokenIndex,
+                          const TokenArray& tokens, int startTokenIndex,
                           GeneratorOutput& output)
 {
 	// Don't let the user think this function can be called during comptime/runtime
@@ -2804,7 +2804,7 @@ bool SplicePointGenerator(EvaluatorEnvironment& environment, const EvaluatorCont
 }
 
 bool DeferGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-					const std::vector<Token>& tokens, int startTokenIndex,
+					const TokenArray& tokens, int startTokenIndex,
 					GeneratorOutput& output)
 {
 	if (!ExpectEvaluatorScope("defer", tokens[startTokenIndex], context,
@@ -2827,10 +2827,10 @@ bool DeferGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& c
 }
 
 // Give the user a replacement suggestion
-typedef std::unordered_map<std::string, const char*> DeprecatedHelpStringMap;
+typedef std::unordered_map<DynamicString, const char*> DeprecatedHelpStringMap;
 DeprecatedHelpStringMap s_deprecatedHelpStrings;
 bool DeprecatedGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                         const std::vector<Token>& tokens, int startTokenIndex,
+                         const TokenArray& tokens, int startTokenIndex,
                          GeneratorOutput& output)
 {
 	DeprecatedHelpStringMap::iterator findIt =
@@ -2850,7 +2850,7 @@ bool DeprecatedGenerator(EvaluatorEnvironment& environment, const EvaluatorConte
 // This generator handles several C/C++ constructs by specializing on the invocation name
 // We can handle most of them, but some (if-else chains, switch, for) require extra attention
 bool CStatementGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                         const std::vector<Token>& tokens, int startTokenIndex,
+                         const TokenArray& tokens, int startTokenIndex,
                          GeneratorOutput& output)
 {
 	int nameTokenIndex = startTokenIndex + 1;
@@ -3137,7 +3137,7 @@ bool CStatementGenerator(EvaluatorEnvironment& environment, const EvaluatorConte
 // An example of a macro in C++
 #if 0
 bool SquareMacro(EvaluatorEnvironment& environment, const EvaluatorContext& context,
-                 const std::vector<Token>& tokens, int startTokenIndex, std::vector<Token>& output)
+                 const TokenArray& tokens, int startTokenIndex, TokenArray& output)
 {
 	if (IsForbiddenEvaluatorScope("square", tokens[startTokenIndex], context,
 	                              EvaluatorScope_Module))
