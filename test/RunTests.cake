@@ -14,7 +14,7 @@
      (array "Hello" "test/Hello.cake")
      (array "Macros" "test/SimpleMacros.cake")
      (array "Code modification" "test/CodeModification.cake")
-     ;; (array "Build options" "test/BuildOptions.cake")
+     (array "Build options" "test/BuildOptions.cake")
      (array "Execute" "test/Execute.cake")
      (array "Export" "test/ExportTest.cake")
      (array "Defines" "test/Defines.cake")
@@ -65,3 +65,5 @@
   (Log "\nRunTests: All tests succeeded!\n")
   (return true))
 (add-compile-time-hook-module pre-build run-tests)
+
+(set-cakelisp-option executable-output "test/runTests")

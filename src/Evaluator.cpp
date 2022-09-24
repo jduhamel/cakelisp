@@ -2049,11 +2049,14 @@ void resetGeneratorOutput(GeneratorOutput& output)
 	output.imports.clear();
 }
 
-uint32_t cacheUpdateFileCrc(EvaluatorEnvironment& environment, const char* filename)
+CrcWithFlags cacheUpdateFileCrc(EvaluatorEnvironment& environment, const char* filename)
 {
 	uint32_t sourceCrc = getFileCrc32(filename);
-	environment.cachedIntraBuildFileCrcs[filename] = sourceCrc;
-	return sourceCrc;
+	CrcWithFlags newCrc = {0};
+	newCrc.crc = sourceCrc;
+	newCrc.wasModified = true;
+	environment.cachedIntraBuildFileCrcs[filename] = newCrc;
+	return newCrc;
 }
 
 uint32_t getSourceArtifactKey(const char* source,
@@ -2069,7 +2072,7 @@ uint32_t getSourceArtifactKey(const char* source,
 void setSourceArtifactCrc(EvaluatorEnvironment& environment, const char* source,
                           const char* artifact)
 {
-	uint32_t sourceCrc = 0;
+	CrcWithFlags sourceCrc = {0};
 	{
 		ArtifactCrcTable::iterator findIt = environment.cachedIntraBuildFileCrcs.find(source);
 		if (findIt != environment.cachedIntraBuildFileCrcs.end())
@@ -2105,7 +2108,7 @@ bool crcsMatchExpectedUpdateCrcPairing(EvaluatorEnvironment& environment, const 
 	}
 	else
 	{
-		uint32_t sourceCrc = 0;
+		CrcWithFlags sourceCrc = {0};
 		{
 			ArtifactCrcTable::iterator findIt = environment.cachedIntraBuildFileCrcs.find(source);
 			if (findIt != environment.cachedIntraBuildFileCrcs.end())
@@ -2113,7 +2116,7 @@ bool crcsMatchExpectedUpdateCrcPairing(EvaluatorEnvironment& environment, const 
 			else
 				sourceCrc = cacheUpdateFileCrc(environment, source);
 		}
-		bool sourceCrcMatchesLastUse = sourceCrc == findIt->second;
+		bool sourceCrcMatchesLastUse = sourceCrc.crc == findIt->second.crc;
 		if (logging.buildReasons)
 		{
 			if (sourceCrcMatchesLastUse)
@@ -2123,7 +2126,7 @@ bool crcsMatchExpectedUpdateCrcPairing(EvaluatorEnvironment& environment, const 
 			}
 			else
 				Logf("Artifact %s needs to build because source %s CRC is now %u (expected %u)\n",
-				     artifact, source, sourceCrc, findIt->second);
+				     artifact, source, sourceCrc.crc, findIt->second.crc);
 		}
 		return sourceCrcMatchesLastUse;
 	}

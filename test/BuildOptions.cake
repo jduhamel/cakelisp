@@ -5,4 +5,6 @@
 
 (add-c-search-directory-module "src" "notsrc")
 
-(add-build-options "-Wall" "-Wextra" "-Wno-unused-parameter" "-O0")
+(add-build-options "-Wall" "-Wextra" "-Wno-unused-parameter" "-O1")
+
+(set-cakelisp-option executable-output "test/buildOptions")

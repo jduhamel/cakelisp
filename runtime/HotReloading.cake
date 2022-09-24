@@ -1,4 +1,7 @@
 (set-cakelisp-option use-c-linkage true)
+;; Because we could be building things without using C linkage, we need to separate all this code
+;; out to prevent oscillating rebuilds
+(add-build-config-label "HotLoadingModifiedCode")
 
 (import "DynamicLoader.cake"
         "ComptimeHelpers.cake" "CHelpers.cake")

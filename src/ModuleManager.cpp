@@ -1479,7 +1479,7 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 			return false;
 		}
 
-		uint32_t commandCrc = 0;
+		CrcWithFlags commandCrc = {0};
 		bool commandEqualsCached = commandEqualsCachedCommand(
 		    manager.cachedCommandCrcs, finalOutputName.c_str(), linkArgumentList, &commandCrc);
 

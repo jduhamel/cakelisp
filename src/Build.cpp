@@ -472,7 +472,7 @@ static void buildWriteCacheFile(const char* buildOutputDir, ArtifactCrcTable& ca
 			outputTokens.push_back(artifactName);
 
 			Token crcToken = {
-			    TokenType_Symbol, std::to_string(crcPair.second), "Build.cpp", 1, 0, 0};
+			    TokenType_Symbol, std::to_string(crcPair.second.crc), "Build.cpp", 1, 0, 0};
 			outputTokens.push_back(crcToken);
 
 			outputTokens.push_back(closeParen);
@@ -488,7 +488,7 @@ static void buildWriteCacheFile(const char* buildOutputDir, ArtifactCrcTable& ca
 		    TokenType_String, std::to_string(crcPair.first), "Build.cpp", 1, 0, 0};
 		outputTokens.push_back(sourceArtifactName);
 
-		Token crcToken = {TokenType_Symbol, std::to_string(crcPair.second), "Build.cpp", 1, 0, 0};
+		Token crcToken = {TokenType_Symbol, std::to_string(crcPair.second.crc), "Build.cpp", 1, 0, 0};
 		outputTokens.push_back(crcToken);
 
 		outputTokens.push_back(closeParen);
@@ -559,19 +559,22 @@ bool buildReadCacheFile(const char* buildOutputDir, ArtifactCrcTable& cachedComm
 
 			if (invocationToken.contents.compare("command-crc") == 0)
 			{
-				cachedCommandCrcs[(*tokens)[keyIndex].contents] =
-				    static_cast<uint32_t>(std::stoul((*tokens)[crcIndex].contents));
+				CrcWithFlags loadedCrc = {
+				    static_cast<uint32_t>(std::stoul((*tokens)[crcIndex].contents)), false};
+				cachedCommandCrcs[(*tokens)[keyIndex].contents] = loadedCrc;
 			}
 			else if (invocationToken.contents.compare("header-crc") == 0)
 			{
-				headerCrcCache[(*tokens)[keyIndex].contents] =
-				    static_cast<uint32_t>(std::stoul((*tokens)[crcIndex].contents));
+				CrcWithFlags loadedCrc = {
+				    static_cast<uint32_t>(std::stoul((*tokens)[crcIndex].contents)), false};
+				headerCrcCache[(*tokens)[keyIndex].contents] = loadedCrc;
 			}
 			else if (invocationToken.contents.compare("source-artifact-crc") == 0)
 			{
+				CrcWithFlags loadedCrc = {
+				    static_cast<uint32_t>(std::stoul((*tokens)[crcIndex].contents)), false};
 				sourceArtifactFileCrcs[static_cast<uint32_t>(
-				    std::stoul((*tokens)[keyIndex].contents))] =
-				    static_cast<uint32_t>(std::stoul((*tokens)[crcIndex].contents));
+				    std::stoul((*tokens)[keyIndex].contents))] = loadedCrc;
 			}
 			else
 			{
@@ -601,15 +604,24 @@ void buildReadMergeWriteCacheFile(const char* buildOutputDir, ArtifactCrcTable& 
 	buildReadCacheFile(buildOutputDir, mergedCachedCommandCrcs, mergedSourceArtifactFileCrcs,
 	                   mergedLoadedHeaderCrcCache);
 
-	// Merge, using our version as latest
+	// Merge, using our version as latest if we modified any CRCs
+	// Otherwise, we want to use the most recently read version in case a nested cakelisp ran and
+	// modified things.
 	for (ArtifactCrcTablePair& crcPair : newCommandCrcs)
-		mergedCachedCommandCrcs[crcPair.first] = crcPair.second;
+	{
+		if (crcPair.second.wasModified)
+			mergedCachedCommandCrcs[crcPair.first] = crcPair.second;
+	}
 	for (const HashedSourceArtifactCrcTablePair& crcPair : sourceArtifactFileCrcs)
 	{
-		mergedSourceArtifactFileCrcs[crcPair.first] = crcPair.second;
+		if (crcPair.second.wasModified)
+			mergedSourceArtifactFileCrcs[crcPair.first] = crcPair.second;
 	}
 	for (ArtifactCrcTablePair& crcPair : changedHeaderCrcCache)
-		mergedLoadedHeaderCrcCache[crcPair.first] = crcPair.second;
+	{
+		if (crcPair.second.wasModified)
+			mergedLoadedHeaderCrcCache[crcPair.first] = crcPair.second;
+	}
 
 	buildWriteCacheFile(buildOutputDir, mergedCachedCommandCrcs, newCommandCrcs,
 	                    mergedSourceArtifactFileCrcs, mergedLoadedHeaderCrcCache);
@@ -767,14 +779,18 @@ static bool AreIncludedHeadersModified_Recursive(const std::vector<std::string>&
 		ArtifactCrcTable::iterator findIt = loadedHeaderCrcCache.find(filename);
 		if (findIt != loadedHeaderCrcCache.end())
 		{
-			bool isCrcChanged = (findIt->second != crc);
+			bool isCrcChanged = (findIt->second.crc != crc);
 			headerCrcDiffersFromExpected |= isCrcChanged;
 			// We only want to make an entry if we no longer match
 			if (isCrcChanged)
 			{
-				changedHeaderCrcCache[filename] = crc;
+				CrcWithFlags newCrc = {0};
+				newCrc.crc = crc;
+				newCrc.wasModified = true;
+				changedHeaderCrcCache[filename] = newCrc;
 				if (logging.includeScanning)
-					Logf("   >>> Header %s crc %u no longer matches %u.\n", filename, crc, findIt->second);
+					Logf("   >>> Header %s crc %u no longer matches %u.\n", filename, crc,
+					     findIt->second.crc);
 			}
 		}
 		else
@@ -782,7 +798,10 @@ static bool AreIncludedHeadersModified_Recursive(const std::vector<std::string>&
 			// We don't know anything about this header yet; we must assume it has "changed" and we
 			// need to rebuild whatever is dependent on it
 			headerCrcDiffersFromExpected |= true;
-			changedHeaderCrcCache[filename] = crc;
+			CrcWithFlags newCrc = {0};
+			newCrc.crc = crc;
+			newCrc.wasModified = true;
+			changedHeaderCrcCache[filename] = newCrc;
 			if (logging.includeScanning)
 				Logf("   >>> Header %s was unknown. Marking as changed.\n", filename);
 		}
@@ -800,14 +819,14 @@ static bool AreIncludedHeadersModified_Recursive(const std::vector<std::string>&
 
 // commandArguments should have terminating null sentinel
 bool commandEqualsCachedCommand(ArtifactCrcTable& cachedCommandCrcs, const char* artifactKey,
-                                const char** commandArguments, uint32_t* crcOut)
+                                const char** commandArguments, CrcWithFlags* crcOut)
 {
-	uint32_t newCommandCrc = 0;
+	CrcWithFlags newCommandCrc = {0};
 	if (logging.commandCrcs)
 		Log("\"");
 	for (const char** currentArg = commandArguments; *currentArg; ++currentArg)
 	{
-		crc32(*currentArg, strlen(*currentArg), &newCommandCrc);
+		crc32(*currentArg, strlen(*currentArg), &newCommandCrc.crc);
 		if (logging.commandCrcs)
 			Logf("%s ", *currentArg);
 	}
@@ -821,14 +840,17 @@ bool commandEqualsCachedCommand(ArtifactCrcTable& cachedCommandCrcs, const char*
 	if (findIt == cachedCommandCrcs.end())
 	{
 		if (logging.commandCrcs)
-			Logf("CRC32 for %s: %u (not cached)\n", artifactKey, newCommandCrc);
+			Logf("CRC32 for %s: %u (not cached)\n", artifactKey, newCommandCrc.crc);
+		crcOut->wasModified = true;
 		return false;
 	}
 
 	if (logging.commandCrcs)
-		Logf("CRC32 for %s: old %u new %u\n", artifactKey, findIt->second, newCommandCrc);
+		Logf("CRC32 for %s: old %u new %u\n", artifactKey, findIt->second.crc, newCommandCrc.crc);
 
-	return findIt->second == newCommandCrc;
+	bool commandEqualsCached = findIt->second.crc == newCommandCrc.crc;
+	crcOut->wasModified = !commandEqualsCached;
+	return commandEqualsCached;
 }
 
 bool cppFileNeedsBuild(EvaluatorEnvironment& environment, const char* sourceFilename,
@@ -837,7 +859,7 @@ bool cppFileNeedsBuild(EvaluatorEnvironment& environment, const char* sourceFile
                        HeaderModificationTimeTable& headerModifiedCache,
                        std::vector<std::string>& headerSearchDirectories)
 {
-	uint32_t commandCrc = 0;
+	CrcWithFlags commandCrc = {0};
 	bool commandEqualsCached = commandEqualsCachedCommand(cachedCommandCrcs, artifactFilename,
 	                                                      commandArguments, &commandCrc);
 	// We could avoid doing this work, but it makes it easier to log if we do it regardless of
