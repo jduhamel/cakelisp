@@ -31,6 +31,10 @@
 ;; This needs to be set before any functions which need C linkage are evaluated by Cakelisp
 (set-cakelisp-option use-c-linkage true)
 
+;; Because we could be building things without using C linkage, we need to separate all this code
+;; out to prevent oscillating rebuilds
+(add-build-config-label "HotLoadingModifiedCode")
+
 ;; This is a hack: We want to generate HotReloading.cake.hpp, but we don't want to inherit all the
 ;; loader-specific options. HotReloading.cake will see this define and not add the options
 ;; TODO: Make a context variable for preventing environment changes during &decls-only?

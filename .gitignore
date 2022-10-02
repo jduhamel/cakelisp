@@ -49,6 +49,8 @@ test/SimpleMacros
 test/Defer
 test/Export
 test/Tutoral_Basics
+test/buildOptions
+test/runTests
 
 *.cake.cpp
 *.cake.hpp

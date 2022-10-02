@@ -67,14 +67,22 @@ CAKELISP_API void makeTargetPlatformVersionArgument(char* resolvedArgumentOut,
 
 typedef std::unordered_map<DynamicString, FileModifyTime> HeaderModificationTimeTable;
 
+struct CrcWithFlags
+{
+	uint32_t crc;
+	// Track whether we actually changed the state of whatever the CRC is pointing to, as opposed to
+	// just loaded it and saved it back out
+	bool wasModified;
+};
+
 // If an existing cached build was run, check the current build's commands against the previous
 // commands via CRC comparison. This ensures changing commands will cause rebuilds
-typedef std::unordered_map<DynamicString, uint32_t> ArtifactCrcTable;
-typedef std::pair<const DynamicString, uint32_t> ArtifactCrcTablePair;
+typedef std::unordered_map<DynamicString, CrcWithFlags> ArtifactCrcTable;
+typedef std::pair<const DynamicString, CrcWithFlags> ArtifactCrcTablePair;
 
-// Uses a hash of the artifact name, then the source name
-typedef std::unordered_map<uint32_t, uint32_t> HashedSourceArtifactCrcTable;
-typedef std::pair<uint32_t, uint32_t> HashedSourceArtifactCrcTablePair;
+// Uses a hash of the artifact name, then the source name as key
+typedef std::unordered_map<uint32_t, CrcWithFlags> HashedSourceArtifactCrcTable;
+typedef std::pair<uint32_t, CrcWithFlags> HashedSourceArtifactCrcTablePair;
 
 // Why read, merge, write? Because it's possible we ran another instance of cakelisp in the same
 // directory during our build phase. The caches are shared state, so we don't want to blow away
@@ -91,7 +99,7 @@ bool buildReadCacheFile(const char* buildOutputDir, ArtifactCrcTable& cachedComm
 
 // commandArguments should have terminating null sentinel
 bool commandEqualsCachedCommand(ArtifactCrcTable& cachedCommandCrcs, const char* artifactKey,
-                                const char** commandArguments, uint32_t* crcOut);
+                                const char** commandArguments, CrcWithFlags* crcOut);
 
 struct EvaluatorEnvironment;
 
