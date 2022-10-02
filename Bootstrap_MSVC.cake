@@ -22,7 +22,8 @@
  "Build.cpp"
  "Metadata.cpp"
  "FindVisualStudio.cpp"
- "Main.cpp")
+ "Main.cpp"
+ "DynamicString.cpp")
 
 (add-build-options "/nologo" "/DWINDOWS" "/DCAKELISP_EXPORTING" "/EHsc"
                    ;;; DEBUG ONLY! Note that link also needs /DEBUG

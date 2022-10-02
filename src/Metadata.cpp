@@ -469,7 +469,7 @@ void printBuiltInGeneratorMetadata(EvaluatorEnvironment* environment)
 		GeneratorMetadata* foundMetadata = nullptr;
 		for (unsigned int i = 0; i < ArraySize(g_generatorMetadata); ++i)
 		{
-			if (0 == it->first.compare(g_generatorMetadata[i].generatorName))
+			if (dynamicStringEqualsCString(it->first, g_generatorMetadata[i].generatorName))
 			{
 				foundMetadata = &g_generatorMetadata[i];
 				break;

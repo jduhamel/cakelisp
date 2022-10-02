@@ -429,7 +429,8 @@ If ~global~ is specified instead, all modules and build dependencies would inclu
  "Logging.cpp"
  "Build.cpp"
  "Metadata.cpp"
- "Main.cpp")
+ "Main.cpp"
+ "DynamicString.cpp")
 #+END_SRC
 
 When the build system reaches this module, it should also build the files in this list. This mechanism allows you to use Cakelisp as a build system for pure C/C++ projects, and makes it easier to integrate Cakelisp in projects which are partially C/C++.

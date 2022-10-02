@@ -17,7 +17,8 @@
  "Logging.cpp"
  "Build.cpp"
  "Metadata.cpp"
- "Main.cpp")
+ "Main.cpp"
+ "DynamicString.cpp")
 
 (add-build-options "-DUNIX" "-Wall" "-Werror" "-std=c++11")
 

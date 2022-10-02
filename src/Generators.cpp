@@ -89,7 +89,7 @@ bool SetProcessCommandArguments(EvaluatorEnvironment& environment, const TokenAr
 			bool found = false;
 			for (unsigned int i = 0; i < ArraySize(symbolsToCommandTypes); ++i)
 			{
-				if (argumentToken.contents.compare(symbolsToCommandTypes[i].symbolName) == 0)
+				if (dynamicStringEquals(argumentToken.contents, symbolsToCommandTypes[i].symbolName))
 				{
 					command->arguments.push_back({symbolsToCommandTypes[i].type, EmptyString});
 					found = true;
@@ -145,7 +145,7 @@ bool SetCakelispOption(EvaluatorEnvironment& environment, const EvaluatorContext
 	};
 	for (unsigned int i = 0; i < ArraySize(stringOptions); ++i)
 	{
-		if (tokens[optionNameIndex].contents.compare(stringOptions[i].option) == 0)
+		if (dynamicStringEquals(tokens[optionNameIndex].contents, stringOptions[i].option))
 		{
 			int pathIndex = getExpectedArgument("expected value", tokens, startTokenIndex, 2,
 			                                    endInvocationIndex);
@@ -176,7 +176,7 @@ bool SetCakelispOption(EvaluatorEnvironment& environment, const EvaluatorContext
 	}
 
 	// This needs to be defined early, else things will only be partially supported
-	if (tokens[optionNameIndex].contents.compare("use-c-linkage") == 0)
+	if (dynamicStringEqualsCString(tokens[optionNameIndex].contents, "use-c-linkage"))
 	{
 		int enableStateIndex =
 		    getExpectedArgument("expected true or false", tokens, startTokenIndex, 2, endInvocationIndex);
@@ -188,9 +188,9 @@ bool SetCakelispOption(EvaluatorEnvironment& environment, const EvaluatorContext
 		if (!ExpectTokenType("use-c-linkage", enableStateToken, TokenType_Symbol))
 			return false;
 
-		if (enableStateToken.contents.compare("true") == 0)
+		if (dynamicStringEqualsCString(enableStateToken.contents, "true"))
 			environment.useCLinkage = true;
-		else if (enableStateToken.contents.compare("false") == 0)
+		else if (dynamicStringEqualsCString(enableStateToken.contents, "false"))
 			environment.useCLinkage = false;
 		else
 		{
@@ -229,7 +229,7 @@ bool SetCakelispOption(EvaluatorEnvironment& environment, const EvaluatorContext
 
 	for (unsigned int i = 0; i < ArraySize(commandOptions); ++i)
 	{
-		if (tokens[optionNameIndex].contents.compare(commandOptions[i].optionName) == 0)
+		if (dynamicStringEqualsCString(tokens[optionNameIndex].contents, commandOptions[i].optionName))
 		{
 			return commandOptions[i].handler(environment, tokens, startTokenIndex,
 			                                 commandOptions[i].command);
@@ -295,7 +295,7 @@ bool SetModuleOption(EvaluatorEnvironment& environment, const EvaluatorContext& 
 
 	for (unsigned int i = 0; i < ArraySize(commandOptions); ++i)
 	{
-		if (tokens[optionNameIndex].contents.compare(commandOptions[i].optionName) == 0)
+		if (dynamicStringEqualsCString(tokens[optionNameIndex].contents, commandOptions[i].optionName))
 		{
 			return commandOptions[i].handler(environment, tokens, startTokenIndex,
 			                                 commandOptions[i].command);
@@ -316,8 +316,8 @@ bool AddCompileTimeHookGenerator(EvaluatorEnvironment& environment, const Evalua
 		return false;
 
 	// Without "-module", the hook is executed at environment-level
-	bool isModuleHook =
-	    tokens[startTokenIndex + 1].contents.compare("add-compile-time-hook-module") == 0;
+	bool isModuleHook = dynamicStringEqualsCString(tokens[startTokenIndex + 1].contents,
+	                                               "add-compile-time-hook-module");
 
 	int endInvocationIndex = FindCloseParenTokenIndex(tokens, startTokenIndex);
 
@@ -337,9 +337,11 @@ bool AddCompileTimeHookGenerator(EvaluatorEnvironment& environment, const Evalua
 	int priorityIndex = getArgument(tokens, startTokenIndex, 3, endInvocationIndex);
 	if (priorityIndex != -1)
 	{
-		bool isPriorityIncrease = tokens[priorityIndex].contents.compare(":priority-increase") == 0;
-		bool isPriorityDecrease = !isPriorityIncrease &&
-		                          tokens[priorityIndex].contents.compare(":priority-decrease") == 0;
+		bool isPriorityIncrease =
+		    dynamicStringEqualsCString(tokens[priorityIndex].contents, ":priority-increase");
+		bool isPriorityDecrease =
+		    !isPriorityIncrease &&
+		    dynamicStringEqualsCString(tokens[priorityIndex].contents, ":priority-decrease");
 		if (!isPriorityIncrease && !isPriorityDecrease)
 		{
 			ErrorAtToken(tokens[priorityIndex],
@@ -374,7 +376,7 @@ bool AddCompileTimeHookGenerator(EvaluatorEnvironment& environment, const Evalua
 	if (hookFunction)
 	{
 		const Token& hookName = tokens[hookNameIndex];
-		if (isModuleHook && hookName.contents.compare("pre-build") == 0)
+		if (isModuleHook && dynamicStringEqualsCString(hookName.contents, "pre-build"))
 		{
 			if (!context.module)
 			{
@@ -390,7 +392,7 @@ bool AddCompileTimeHookGenerator(EvaluatorEnvironment& environment, const Evalua
 			                          userPriority, &tokens[functionNameIndex]);
 		}
 
-		if (!isModuleHook && hookName.contents.compare("pre-link") == 0)
+		if (!isModuleHook && dynamicStringEqualsCString(hookName.contents, "pre-link"))
 		{
 			return AddCompileTimeHook(environment, &environment.preLinkHooks,
 			                          g_environmentPreLinkHookSignature,
@@ -398,7 +400,7 @@ bool AddCompileTimeHookGenerator(EvaluatorEnvironment& environment, const Evalua
 			                          userPriority, &tokens[functionNameIndex]);
 		}
 
-		if (!isModuleHook && hookName.contents.compare("post-references-resolved") == 0)
+		if (!isModuleHook && dynamicStringEqualsCString(hookName.contents, "post-references-resolved"))
 		{
 			return AddCompileTimeHook(environment, &environment.postReferencesResolvedHooks,
 			                          g_environmentPostReferencesResolvedHookSignature,
@@ -476,7 +478,7 @@ bool AddStringOptionsGenerator(EvaluatorEnvironment& environment, const Evaluato
 	const StringOptionList* destination = nullptr;
 	for (unsigned int i = 0; i < ArraySize(possibleDestinations); ++i)
 	{
-		if (invocationToken.contents.compare(possibleDestinations[i].name) == 0)
+		if (dynamicStringEqualsCString(invocationToken.contents, possibleDestinations[i].name))
 		{
 			destination = &possibleDestinations[i];
 			break;
@@ -510,7 +512,7 @@ bool AddStringOptionsGenerator(EvaluatorEnvironment& environment, const Evaluato
 		bool found = false;
 		for (const DynamicString& existingValue : *destination->stringList)
 		{
-			if (currentToken.contents.compare(existingValue) == 0)
+			if (dynamicStringEquals(currentToken.contents, existingValue))
 			{
 				found = true;
 				break;
@@ -657,7 +659,7 @@ bool ImportGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& 
 		return false;
 
 	// C/C++ imports are "c-import"
-	bool isCakeImport = tokens[startTokenIndex + 1].contents.compare("import") == 0;
+	bool isCakeImport = dynamicStringEqualsCString(tokens[startTokenIndex + 1].contents, "import");
 
 	ImportState state = WithDefinitions;
 
@@ -667,9 +669,9 @@ bool ImportGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& 
 
 		if (currentToken.type == TokenType_Symbol && isSpecialSymbol(currentToken))
 		{
-			if (currentToken.contents.compare("&with-defs") == 0)
+			if (dynamicStringEqualsCString(currentToken.contents, "&with-defs"))
 				state = WithDefinitions;
-			else if (currentToken.contents.compare("&decls-only") == 0)
+			else if (dynamicStringEqualsCString(currentToken.contents, "&decls-only"))
 			{
 				if (!isCakeImport)
 				{
@@ -678,7 +680,7 @@ bool ImportGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& 
 				}
 				state = DeclarationsOnly;
 			}
-			else if (currentToken.contents.compare("&defs-only") == 0)
+			else if (dynamicStringEqualsCString(currentToken.contents, "&defs-only"))
 			{
 				if (!isCakeImport)
 				{
@@ -687,9 +689,9 @@ bool ImportGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& 
 				}
 				state = DefinitionsOnly;
 			}
-			else if (currentToken.contents.compare("&with-decls") == 0)
+			else if (dynamicStringEqualsCString(currentToken.contents, "&with-decls"))
 				state = WithDeclarations;
-			else if (currentToken.contents.compare("&comptime-only") == 0)
+			else if (dynamicStringEqualsCString(currentToken.contents, "&comptime-only"))
 			{
 				if (!isCakeImport)
 				{
@@ -908,8 +910,8 @@ bool CPreprocessorDefineGenerator(EvaluatorEnvironment& environment,
 	int valueIndex = getArgument(tokens, startTokenIndex, 2, endInvocationIndex);
 	const Token* value = valueIndex != -1 ? &tokens[valueIndex] : nullptr;
 
-	bool isGlobal =
-	    tokens[startTokenIndex + 1].contents.compare("c-preprocessor-define-global") == 0;
+	bool isGlobal = dynamicStringEqualsCString(tokens[startTokenIndex + 1].contents,
+	                                           "c-preprocessor-define-global");
 
 	StringOutputArray& outputDest = isGlobal ? output.header : output.source;
 
@@ -956,11 +958,14 @@ bool DefunGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& c
 	if (!ExpectTokenType("defun", argsStart, TokenType_OpenParen))
 		return false;
 
-	bool isModuleLocal = tokens[startTokenIndex + 1].contents.compare("defun-local") == 0;
-	bool isNoDeclare = tokens[startTokenIndex + 1].contents.compare("defun-nodecl") == 0;
+	bool isModuleLocal =
+	    dynamicStringEqualsCString(tokens[startTokenIndex + 1].contents, "defun-local");
+	bool isNoDeclare =
+	    dynamicStringEqualsCString(tokens[startTokenIndex + 1].contents, "defun-nodecl");
 	bool shouldDeclare = !isModuleLocal && !isNoDeclare;
 	// Note that macros and generators have their own generators, so we don't handle them here
-	bool isCompileTime = tokens[startTokenIndex + 1].contents.compare("defun-comptime") == 0;
+	bool isCompileTime =
+	    dynamicStringEqualsCString(tokens[startTokenIndex + 1].contents, "defun-comptime");
 
 	// In order to support function definition modification, even runtime functions must have
 	// spliced output, because we might be completely changing the definition
@@ -1124,8 +1129,8 @@ bool DefFunctionSignatureGenerator(EvaluatorEnvironment& environment,
 	if (!ExpectTokenType("def-function-signature", argsStart, TokenType_OpenParen))
 		return false;
 
-	bool isModuleLocal =
-	    tokens[startTokenIndex + 1].contents.compare("def-function-signature-global") != 0;
+	bool isModuleLocal = !dynamicStringEqualsCString(tokens[startTokenIndex + 1].contents,
+	                                                 "def-function-signature-global");
 
 	if (!isModuleLocal && context.scope != EvaluatorScope_Module)
 	{
@@ -1223,13 +1228,13 @@ bool VariableDeclarationGenerator(EvaluatorEnvironment& environment,
 	int endInvocationIndex = FindCloseParenTokenIndex(tokens, startTokenIndex);
 
 	// Global variables will get extern'd in the header
-	bool isGlobal = funcNameToken.contents.compare("var-global") == 0;
+	bool isGlobal = dynamicStringEqualsCString(funcNameToken.contents, "var-global");
 	if (isGlobal && !ExpectEvaluatorScope("global variable declaration", tokens[startTokenIndex],
 	                                      context, EvaluatorScope_Module))
 		return false;
 
 	// Only necessary for static variables declared inside a function
-	bool isStatic = funcNameToken.contents.compare("var-static") == 0;
+	bool isStatic = dynamicStringEqualsCString(funcNameToken.contents, "var-static");
 	if (isStatic && !ExpectEvaluatorScope("static variable declaration", tokens[startTokenIndex],
 	                                      context, EvaluatorScope_Body))
 		return false;
@@ -1435,7 +1440,7 @@ static ComptimeTokenArgContainedType ComptimeParseTokenArgumentType(const Token&
 	bool foundType = false;
 	for (unsigned int i = 0; i < ArraySize(containedTypeOptions); ++i)
 	{
-		if (expectedType.contents.compare(containedTypeOptions[i].keyword) == 0)
+		if (dynamicStringEqualsCString(expectedType.contents, containedTypeOptions[i].keyword))
 		{
 			type = containedTypeOptions[i].type;
 			foundType = true;
@@ -1503,12 +1508,12 @@ static bool ComptimeGenerateTokenArguments(const TokenArray& tokens, int startAr
 		{
 			if (currentToken.type == TokenType_Symbol && isSpecialSymbol(currentToken))
 			{
-				if (currentToken.contents.compare("&optional") == 0)
+				if (dynamicStringEqualsCString(currentToken.contents, "&optional"))
 				{
 					isOptional = true;
 					continue;
 				}
-				else if (currentToken.contents.compare("&rest") == 0)
+				else if (dynamicStringEqualsCString(currentToken.contents, "&rest"))
 				{
 					checkArgCount = false;
 					continue;
@@ -1542,11 +1547,11 @@ static bool ComptimeGenerateTokenArguments(const TokenArray& tokens, int startAr
 			if (currentToken.type == TokenType_OpenParen)
 			{
 				const Token& typeModifier = tokens[currentArgIndex + 1];
-				if (typeModifier.contents.compare("arg-index") == 0)
+				if (dynamicStringEqualsCString(typeModifier.contents, "arg-index"))
 					bindType = ArgumentIndex;
-				else if (typeModifier.contents.compare("index") == 0)
+				else if (dynamicStringEqualsCString(typeModifier.contents, "index"))
 					bindType = Index;
-				else if (typeModifier.contents.compare("ref") == 0)
+				else if (dynamicStringEqualsCString(typeModifier.contents, "ref"))
 					bindType = Reference;
 				else
 				{
@@ -1834,7 +1839,7 @@ bool DefMacroGenerator(EvaluatorEnvironment& environment, const EvaluatorContext
 	// TODO: It would be nice to support global vs. local macros
 	// This only really needs to be an environment distinction, not a code output distinction
 	// Macros will be found without headers thanks to dynamic linking
-	// bool isModuleLocal = tokens[startTokenIndex + 1].contents.compare("defmacro-local") == 0;
+	// bool isModuleLocal = dynamicStringEqualsCString(tokens[startTokenIndex + 1].contents, "defmacro-local");
 
 	if (environment.isMsvcCompiler)
 		addStringOutput(compTimeOutput->source, "__declspec(dllexport)", StringOutMod_SpaceAfter,
@@ -1933,7 +1938,7 @@ bool DefGeneratorGenerator(EvaluatorEnvironment& environment, const EvaluatorCon
 	// TODO: It would be nice to support global vs. local generators
 	// This only really needs to be an environment distinction, not a code output distinction
 	// Generators will be found without headers thanks to dynamic linking
-	// bool isModuleLocal = tokens[startTokenIndex + 1].contents.compare("defgenerator-local") == 0;
+	// bool isModuleLocal = dynamicStringEqualsCString(tokens[startTokenIndex + 1].contents, "defgenerator-local");
 
 	if (environment.isMsvcCompiler)
 		addStringOutput(compTimeOutput->source, "__declspec(dllexport)", StringOutMod_SpaceAfter,
@@ -2000,7 +2005,7 @@ bool DefStructGenerator(EvaluatorEnvironment& environment, const EvaluatorContex
 
 	// Structs defined in body scope are automatically local
 	bool isGlobal = context.scope == EvaluatorScope_Module &&
-	                tokens[startTokenIndex + 1].contents.compare("defstruct") == 0;
+	                dynamicStringEqualsCString(tokens[startTokenIndex + 1].contents, "defstruct");
 
 	StringOutputArray& outputDest = isGlobal ? output.header : output.source;
 
@@ -2202,7 +2207,7 @@ bool ConditionGenerator(EvaluatorEnvironment& environment, const EvaluatorContex
 		// Special case: The "default" case of cond is conventionally marked with true as the
 		// conditional. We'll support that, and not even write the if. If the cond is just (cond
 		// (true blah)), make sure to still write the if (true)
-		if (!isFirstBlock && tokens[conditionIndex].contents.compare("true") == 0)
+		if (!isFirstBlock && dynamicStringEqualsCString(tokens[conditionIndex].contents, "true"))
 		{
 			if (endConditionBlockIndex + 1 != endInvocationIndex)
 			{
@@ -2335,7 +2340,7 @@ static bool DefTypeAliasGenerator(EvaluatorEnvironment& environment,
 
 	const Token& invocationToken = tokens[1 + startTokenIndex];
 
-	bool isGlobal = invocationToken.contents.compare("def-type-alias-global") == 0;
+	bool isGlobal = dynamicStringEqualsCString(invocationToken.contents, "def-type-alias-global");
 
 	StringOutputArray typeOutput;
 	StringOutputArray typeAfterNameOutput;
@@ -2454,15 +2459,16 @@ bool TokenizePushGenerator(EvaluatorEnvironment& environment, const EvaluatorCon
 		// We only need to generate code when splices are referenced. Otherwise, the tokens are
 		// pushed when executing the tokenize push
 		if (currentToken.type == TokenType_OpenParen && nextToken.type == TokenType_Symbol &&
-		    (nextToken.contents.compare("token-splice") == 0 ||
-		     nextToken.contents.compare("token-splice-addr") == 0 ||
-		     nextToken.contents.compare("token-splice-array") == 0 ||
-		     nextToken.contents.compare("token-splice-rest") == 0))
+		    (dynamicStringEqualsCString(nextToken.contents, "token-splice") ||
+		     dynamicStringEqualsCString(nextToken.contents, "token-splice-addr") ||
+		     dynamicStringEqualsCString(nextToken.contents, "token-splice-array") ||
+		     dynamicStringEqualsCString(nextToken.contents, "token-splice-rest")))
 		{
 			// TODO: Performance: remove extra string compares
-			bool isArray = nextToken.contents.compare("token-splice-array") == 0;
-			bool isRest = nextToken.contents.compare("token-splice-rest") == 0;
-			bool tokenMakePointer = isArray || nextToken.contents.compare("token-splice-addr") == 0;
+			bool isArray = dynamicStringEqualsCString(nextToken.contents, "token-splice-array");
+			bool isRest = dynamicStringEqualsCString(nextToken.contents, "token-splice-rest");
+			bool tokenMakePointer =
+			    isArray || dynamicStringEqualsCString(nextToken.contents, "token-splice-addr");
 
 			// Skip invocation
 			int startSpliceArgs = i + 2;
@@ -2638,7 +2644,7 @@ bool ComptimeCondGenerator(EvaluatorEnvironment& environment, const EvaluatorCon
 		if (conditionIndex == -1)
 			return false;
 
-		bool isExplicitTrue = tokens[conditionIndex].contents.compare("true") == 0;
+		bool isExplicitTrue = dynamicStringEqualsCString(tokens[conditionIndex].contents, "true");
 
 		// Special case: The "default" case of cond is conventionally marked with true as the
 		// conditional. We'll support that, and not even write the if. If the cond is just (cond
@@ -2750,7 +2756,7 @@ bool ExportScopeGenerator(EvaluatorEnvironment& environment, const EvaluatorCont
 	context.module->exportScopes.push_back(newExport);
 
 	// We also want to evaluate the scope in the current module
-	if (tokens[startTokenIndex + 1].contents.compare("export-and-evaluate") == 0)
+	if (dynamicStringEqualsCString(tokens[startTokenIndex + 1].contents, "export-and-evaluate"))
 	{
 		EvaluatorContext exportEvaluateContext = context;
 		int numErrors =
@@ -3112,7 +3118,7 @@ bool CStatementGenerator(EvaluatorEnvironment& environment, const EvaluatorConte
 
 	for (unsigned int i = 0; i < ArraySize(statementOperators); ++i)
 	{
-		if (nameToken.contents.compare(statementOperators[i].name) == 0)
+		if (dynamicStringEqualsCString(nameToken.contents, statementOperators[i].name))
 		{
 			if (statementOperators[i].requiresFeature != RequiredFeature_None)
 				RequiresFeature(

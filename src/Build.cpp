@@ -558,19 +558,19 @@ bool buildReadCacheFile(const char* buildOutputDir, ArtifactCrcTable& cachedComm
 				return false;
 			}
 
-			if (invocationToken.contents.compare("command-crc") == 0)
+			if (dynamicStringEqualsCString(invocationToken.contents, "command-crc"))
 			{
 				CrcWithFlags loadedCrc = {
 				    static_cast<uint32_t>(std::stoul((*tokens)[crcIndex].contents)), false};
 				cachedCommandCrcs[(*tokens)[keyIndex].contents] = loadedCrc;
 			}
-			else if (invocationToken.contents.compare("header-crc") == 0)
+			else if (dynamicStringEqualsCString(invocationToken.contents, "header-crc"))
 			{
 				CrcWithFlags loadedCrc = {
 				    static_cast<uint32_t>(std::stoul((*tokens)[crcIndex].contents)), false};
 				headerCrcCache[(*tokens)[keyIndex].contents] = loadedCrc;
 			}
-			else if (invocationToken.contents.compare("source-artifact-crc") == 0)
+			else if (dynamicStringEqualsCString(invocationToken.contents, "source-artifact-crc"))
 			{
 				CrcWithFlags loadedCrc = {
 				    static_cast<uint32_t>(std::stoul((*tokens)[crcIndex].contents)), false};

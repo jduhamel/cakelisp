@@ -45,6 +45,7 @@ CL.exe src/Tokenizer.cpp ^
  src/Build.cpp ^
  src/Metadata.cpp ^
  src/Main.cpp ^
+ src/DynamicString.cpp ^
  3rdPartySrc/FindVisualStudio.cpp ^
  Advapi32.lib Ole32.lib OleAut32.lib ^
  /I 3rdPartySrc ^

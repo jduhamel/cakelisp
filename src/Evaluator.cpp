@@ -134,7 +134,7 @@ const ObjectReferenceStatus* addObjectReference(EvaluatorEnvironment& environmen
 	ObjectDefinitionMap::iterator findDefinition = environment.definitions.find(definitionName);
 	if (findDefinition == environment.definitions.end())
 	{
-		if (definitionName.compare(globalDefinitionName) != 0)
+		if (!dynamicStringEqualsCString(definitionName, globalDefinitionName))
 		{
 			Logf("error: expected definition %s to already exist. Things will break\n",
 			     definitionName.c_str());
@@ -237,7 +237,7 @@ bool GetCompileTimeVariable(EvaluatorEnvironment& environment, const char* name,
 	if (findIt == environment.compileTimeVariables.end())
 		return false;
 
-	if (findIt->second.type.compare(typeExpression) != 0)
+	if (!dynamicStringEqualsCString(findIt->second.type, typeExpression))
 	{
 		Logf(
 		    "error: GetCompileTimeVariable(): type does not match existing variable %s. Types must "
@@ -503,7 +503,7 @@ int EvaluateGenerate_Recursive(EvaluatorEnvironment& environment, const Evaluato
 				{
 					// Special case: C requires NULL, C++ encourages nullptr. Let's handle them both
 					// automatically with null
-					if (token.contents.compare("null") == 0)
+					if (dynamicStringEqualsCString(token.contents, "null"))
 					{
 						// TODO: C vs. C++
 						addStringOutput(output.source, "nullptr", StringOutMod_None, &token);
@@ -2268,7 +2268,7 @@ bool registerEvaluateGenerator(EvaluatorEnvironment& environment, const char* ge
 				{
 					ObjectReferenceStatus& referenceStatus = reference.second;
 
-					if (referenceStatus.name->contents.compare(generatorName) == 0)
+					if (dynamicStringEqualsCString(referenceStatus.name->contents, generatorName))
 						referenceStatus.guessState = GuessState_Resolved;
 				}
 			}

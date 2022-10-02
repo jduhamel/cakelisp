@@ -31,6 +31,7 @@ else
 		src/Build.cpp \
 		src/Metadata.cpp \
 		src/Main.cpp \
+		src/DynamicString.cpp \
 		-DMACOS || exit $?
 	# Need -ldl for dynamic loading, -rdynamic to let compile-time functions resolve to
 	# Cakelisp symbols

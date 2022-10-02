@@ -31,6 +31,7 @@ else
 		src/Build.cpp \
 		src/Metadata.cpp \
 		src/Main.cpp \
+		src/DynamicString.cpp \
 		-DUNIX || exit $?
 	# Need -ldl for dynamic loading, --export-dynamic to let compile-time functions resolve to
 	# Cakelisp symbols

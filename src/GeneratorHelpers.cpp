@@ -201,7 +201,7 @@ int getNextArgument(const TokenArray& tokens, int currentTokenIndex, int endArra
 int blockAbsorbScope(const TokenArray& tokens, int startBlockIndex)
 {
 	if (tokens[startBlockIndex].type == TokenType_OpenParen &&
-	    tokens[startBlockIndex + 1].contents.compare("scope") == 0)
+	    dynamicStringEqualsCString(tokens[startBlockIndex + 1].contents, "scope"))
 		return startBlockIndex + 2;
 	return startBlockIndex;
 }
@@ -318,8 +318,7 @@ static void CopyTokensWithMacrosExpanded_Recursive(const Token* startToken, cons
 	}
 }
 
-bool CreateDefinitionCopyMacroExpanded(const ObjectDefinition& definition,
-                                       TokenArray& tokensOut)
+bool CreateDefinitionCopyMacroExpanded(const ObjectDefinition& definition, TokenArray& tokensOut)
 {
 	if (!(definition.type == ObjectType_Function || definition.type == ObjectType_Variable))
 	{
@@ -460,7 +459,8 @@ void addSpliceOutputWithModifiers(GeneratorOutput& output, GeneratorOutput* spli
                                   const Token* startToken, StringOutputModifierFlags modifiers)
 {
 	StringOutput newStringOutput = {};
-	newStringOutput.modifiers = (StringOutputModifierFlags)((int)StringOutMod_Splice | (int)modifiers);
+	newStringOutput.modifiers =
+	    (StringOutputModifierFlags)((int)StringOutMod_Splice | (int)modifiers);
 	newStringOutput.startToken = startToken;
 
 	newStringOutput.spliceOutput = spliceOutput;
@@ -505,7 +505,7 @@ bool parseFunctionSignature(const TokenArray& tokens, int argsIndex,
 		else if (state == Name)
 		{
 			if (currentToken.type == TokenType_Symbol &&
-			    currentToken.contents.compare("&return") == 0)
+			    dynamicStringEqualsCString(currentToken.contents, "&return"))
 			{
 				state = ReturnType;
 				if (!ExpectInInvocation("&return expected type", tokens, i + 1, endArgsIndex))
@@ -514,7 +514,7 @@ bool parseFunctionSignature(const TokenArray& tokens, int argsIndex,
 				continue;
 			}
 			else if (currentToken.type == TokenType_Symbol &&
-			    currentToken.contents.compare("&variable-arguments") == 0)
+			         dynamicStringEqualsCString(currentToken.contents, "&variable-arguments"))
 			{
 				isVariadicIndex = i;
 				continue;
@@ -636,8 +636,8 @@ bool outputFunctionReturnType(EvaluatorEnvironment& environment, const Evaluator
 
 bool outputFunctionArguments(EvaluatorEnvironment& environment, const EvaluatorContext& context,
                              const TokenArray& tokens, GeneratorOutput& output,
-                             const FunctionArgumentTokensArray& arguments,
-                             int isVariadicIndex, bool outputSource, bool outputHeader)
+                             const FunctionArgumentTokensArray& arguments, int isVariadicIndex,
+                             bool outputSource, bool outputHeader)
 {
 	int numFunctionArguments = arguments.size();
 	for (int i = 0; i < numFunctionArguments; ++i)
@@ -697,11 +697,9 @@ bool outputFunctionArguments(EvaluatorEnvironment& environment, const EvaluatorC
 		}
 
 		if (outputSource)
-			addStringOutput(output.source, "...",
-			                StringOutMod_None, &tokens[isVariadicIndex]);
+			addStringOutput(output.source, "...", StringOutMod_None, &tokens[isVariadicIndex]);
 		if (outputHeader)
-			addStringOutput(output.header, "...",
-			                StringOutMod_None, &tokens[isVariadicIndex]);
+			addStringOutput(output.header, "...", StringOutMod_None, &tokens[isVariadicIndex]);
 	}
 
 	return true;
@@ -710,9 +708,9 @@ bool outputFunctionArguments(EvaluatorEnvironment& environment, const EvaluatorC
 // afterNameOutput must be a separate buffer because some C type specifiers (e.g. array []) need to
 // come after the type. Returns whether parsing was successful
 bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
-                                      const EvaluatorContext& context,
-                                      const TokenArray& tokens, int startTokenIndex,
-                                      bool allowArray, StringOutputArray& typeOutput,
+                                      const EvaluatorContext& context, const TokenArray& tokens,
+                                      int startTokenIndex, bool allowArray,
+                                      StringOutputArray& typeOutput,
                                       StringOutputArray& afterNameOutput)
 {
 	if (&typeOutput == &afterNameOutput)
@@ -753,7 +751,8 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 
 		int endTokenIndex = FindCloseParenTokenIndex(tokens, startTokenIndex);
 
-		if (typeInvocation.contents.compare("addr") == 0 || typeInvocation.contents.compare("ref") == 0)
+		if (dynamicStringEqualsCString(typeInvocation.contents, "addr") ||
+		    dynamicStringEqualsCString(typeInvocation.contents, "ref"))
 		{
 			if (!ExpectNumArguments(tokens, startTokenIndex, endTokenIndex, 2))
 				return false;
@@ -768,10 +767,11 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 			                                      allowArray, typeOutput, afterNameOutput))
 				return false;
 
-			addStringOutput(typeOutput, typeInvocation.contents.compare("addr") == 0 ? "*" : "&",
+			addStringOutput(typeOutput,
+			                dynamicStringEqualsCString(typeInvocation.contents, "addr") ? "*" : "&",
 			                StringOutMod_None, &typeInvocation);
 		}
-		else if (typeInvocation.contents.compare("array") == 0)
+		else if (dynamicStringEqualsCString(typeInvocation.contents, "array"))
 		{
 			if (!allowArray)
 			{
@@ -837,7 +837,7 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 			return tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
 			                                        allowArray, typeOutput, afterNameOutput);
 		}
-		else if (typeInvocation.contents.compare("const") == 0)
+		else if (dynamicStringEqualsCString(typeInvocation.contents, "const"))
 		{
 			if (!ExpectNumArguments(tokens, startTokenIndex, endTokenIndex, 2))
 				return false;
@@ -848,13 +848,14 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 				return false;
 
 			// Annoyingly, pointer const-ness must be appended in our world
-			bool isConstPointer = tokens[typeIndex].type == TokenType_OpenParen &&
-			                      (tokens[typeIndex + 1].contents.compare("addr") == 0 ||
-			                       tokens[typeIndex + 1].contents.compare("ref") == 0);
+			bool isConstPointer =
+			    tokens[typeIndex].type == TokenType_OpenParen &&
+			    (dynamicStringEqualsCString(tokens[typeIndex + 1].contents, "addr") ||
+			     dynamicStringEqualsCString(tokens[typeIndex + 1].contents, "ref"));
 
 			if (!isConstPointer)
-				addStringOutput(typeOutput, typeInvocation.contents.c_str(), StringOutMod_SpaceAfter,
-				                &typeInvocation);
+				addStringOutput(typeOutput, typeInvocation.contents.c_str(),
+				                StringOutMod_SpaceAfter, &typeInvocation);
 
 			if (!tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
 			                                      allowArray, typeOutput, afterNameOutput))
@@ -864,7 +865,7 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 				addStringOutput(typeOutput, typeInvocation.contents.c_str(),
 				                StringOutMod_SpaceBefore, &typeInvocation);
 		}
-		else if (typeInvocation.contents.compare("in") == 0)
+		else if (dynamicStringEqualsCString(typeInvocation.contents, "in"))
 		{
 			int firstScopeIndex =
 			    getExpectedArgument("expected scope", tokens, startTokenIndex, 1, endTokenIndex);
@@ -886,7 +887,7 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 					addStringOutput(typeOutput, "::", StringOutMod_None, &tokens[startScopeIndex]);
 			}
 		}
-		else if (typeInvocation.contents.compare("rval-ref-to") == 0)
+		else if (dynamicStringEqualsCString(typeInvocation.contents, "rval-ref-to"))
 		{
 			if (!ExpectNumArguments(tokens, startTokenIndex, endTokenIndex, 2))
 				return false;
@@ -902,7 +903,7 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 
 			addStringOutput(typeOutput, "&&", StringOutMod_None, &typeInvocation);
 		}
-		else if (typeInvocation.contents.compare("template") == 0)
+		else if (dynamicStringEqualsCString(typeInvocation.contents, "template"))
 		{
 			int typeIndex = getExpectedArgument("expected template name", tokens, startTokenIndex,
 			                                    1, endTokenIndex);
@@ -946,8 +947,8 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 			for (unsigned int deprecatedTypeIndex = 0;
 			     deprecatedTypeIndex < ArraySize(deprecatedTypes); ++deprecatedTypeIndex)
 			{
-				if (typeInvocation.contents.compare(deprecatedTypes[deprecatedTypeIndex].keyword) ==
-				    0)
+				if (dynamicStringEqualsCString(typeInvocation.contents,
+				                               deprecatedTypes[deprecatedTypeIndex].keyword))
 				{
 					ErrorAtTokenf(tokens[startTokenIndex + 1], "%s is deprecated. Use %s instead.",
 					              deprecatedTypes[deprecatedTypeIndex].keyword,
@@ -1012,7 +1013,7 @@ bool CompileTimeFunctionSignatureMatches(EvaluatorEnvironment& environment, cons
 			continue;
 
 		if (expectedToken->type != currentUserArgToken->type ||
-		    expectedToken->contents.compare(currentUserArgToken->contents) != 0)
+		    !dynamicStringEquals(expectedToken->contents, currentUserArgToken->contents))
 		{
 			ErrorAtToken(*currentUserArgToken,
 			             "arguments do not match expected function signature "
@@ -1321,14 +1322,12 @@ bool CompileTimeEvaluateCondition(EvaluatorEnvironment& environment,
 
 void TokenizePushSpliceArray(TokenizePushContext* spliceContext, const TokenArray* tokens)
 {
-	TokenizePushSpliceArgument newArgument = {TokenizePushSpliceArgument_Array, nullptr,
-	                                          tokens};
+	TokenizePushSpliceArgument newArgument = {TokenizePushSpliceArgument_Array, nullptr, tokens};
 	spliceContext->spliceArguments.push_back(newArgument);
 }
 
 void TokenizePushSpliceAllTokenExpressions(TokenizePushContext* spliceContext,
-                                           const Token* startToken,
-                                           const TokenArray* sourceTokens)
+                                           const Token* startToken, const TokenArray* sourceTokens)
 {
 	TokenizePushSpliceArgument newArgument = {TokenizePushSpliceArgument_AllExpressions, startToken,
 	                                          sourceTokens};
@@ -1351,8 +1350,7 @@ static const Token* getNextExpression(const Token* token)
 }
 
 bool TokenizePushExecute(EvaluatorEnvironment& environment, const char* definitionName,
-                         uint32_t tokensCrc, TokenizePushContext* spliceContext,
-                         TokenArray& output)
+                         uint32_t tokensCrc, TokenizePushContext* spliceContext, TokenArray& output)
 {
 	ObjectDefinition* definition = findObjectDefinition(environment, definitionName);
 	if (!definition)
@@ -1378,10 +1376,10 @@ bool TokenizePushExecute(EvaluatorEnvironment& environment, const char* definiti
 	{
 		const Token* nextToken = currentToken + 1;
 		if (currentToken->type == TokenType_OpenParen && nextToken->type == TokenType_Symbol &&
-		    (nextToken->contents.compare("token-splice") == 0 ||
-		     nextToken->contents.compare("token-splice-addr") == 0 ||
-		     nextToken->contents.compare("token-splice-array") == 0 ||
-		     nextToken->contents.compare("token-splice-rest") == 0))
+		    (dynamicStringEqualsCString(nextToken->contents, "token-splice") ||
+		     dynamicStringEqualsCString(nextToken->contents, "token-splice-addr") ||
+		     dynamicStringEqualsCString(nextToken->contents, "token-splice-array") ||
+		     dynamicStringEqualsCString(nextToken->contents, "token-splice-rest")))
 		{
 			const Token* endSpliceToken = FindTokenExpressionEnd(currentToken);
 			const Token* startSpliceToken = currentToken + 2;
