@@ -166,7 +166,7 @@ bool SetCakelispOption(EvaluatorEnvironment& environment, const EvaluatorContext
 					    pathToken,
 					    "ignoring %s - only the first encountered set will have an effect. "
 					    "Currently set to '%s'",
-					    stringOptions[i].option, stringOptions[i].output->c_str());
+					    stringOptions[i].option, dynamicStringToCStr(*stringOptions[i].output));
 				return true;
 			}
 
@@ -357,7 +357,7 @@ bool AddCompileTimeHookGenerator(EvaluatorEnvironment& environment, const Evalua
 		                     TokenType_Symbol))
 			return false;
 
-		userPriority = atoi(tokens[priorityValueIndex].contents.c_str());
+		userPriority = atoi(dynamicStringToCStr(tokens[priorityValueIndex].contents));
 		if (userPriority < 0)
 		{
 			ErrorAtTokenf(tokens[priorityValueIndex],
@@ -372,7 +372,7 @@ bool AddCompileTimeHookGenerator(EvaluatorEnvironment& environment, const Evalua
 	}
 
 	void* hookFunction =
-	    findCompileTimeFunction(environment, tokens[functionNameIndex].contents.c_str());
+	    findCompileTimeFunction(environment, dynamicStringToCStr(tokens[functionNameIndex].contents));
 	if (hookFunction)
 	{
 		const Token& hookName = tokens[hookNameIndex];
@@ -388,7 +388,7 @@ bool AddCompileTimeHookGenerator(EvaluatorEnvironment& environment, const Evalua
 
 			return AddCompileTimeHook(environment, &context.module->preBuildHooks,
 			                          g_modulePreBuildHookSignature,
-			                          tokens[functionNameIndex].contents.c_str(), hookFunction,
+			                          dynamicStringToCStr(tokens[functionNameIndex].contents), hookFunction,
 			                          userPriority, &tokens[functionNameIndex]);
 		}
 
@@ -396,7 +396,7 @@ bool AddCompileTimeHookGenerator(EvaluatorEnvironment& environment, const Evalua
 		{
 			return AddCompileTimeHook(environment, &environment.preLinkHooks,
 			                          g_environmentPreLinkHookSignature,
-			                          tokens[functionNameIndex].contents.c_str(), hookFunction,
+			                          dynamicStringToCStr(tokens[functionNameIndex].contents), hookFunction,
 			                          userPriority, &tokens[functionNameIndex]);
 		}
 
@@ -404,7 +404,7 @@ bool AddCompileTimeHookGenerator(EvaluatorEnvironment& environment, const Evalua
 		{
 			return AddCompileTimeHook(environment, &environment.postReferencesResolvedHooks,
 			                          g_environmentPostReferencesResolvedHookSignature,
-			                          tokens[functionNameIndex].contents.c_str(), hookFunction,
+			                          dynamicStringToCStr(tokens[functionNameIndex].contents), hookFunction,
 			                          userPriority, &tokens[functionNameIndex]);
 		}
 	}
@@ -523,7 +523,7 @@ bool AddStringOptionsGenerator(EvaluatorEnvironment& environment, const Evaluato
 			destination->stringList->push_back(currentToken.contents);
 
 			if (logging.optionAdding)
-				NoteAtTokenf(currentToken, "added option %s (%s)", currentToken.contents.c_str(),
+				NoteAtTokenf(currentToken, "added option %s (%s)", dynamicStringToCStr(currentToken.contents),
 				             destination->name);
 		}
 	}
@@ -712,7 +712,7 @@ bool ImportGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& 
 			continue;
 		}
 		else if (!ExpectTokenType("import file", currentToken, TokenType_String) ||
-		         currentToken.contents.empty())
+		         dynamicStringIsEmpty(currentToken.contents))
 			return false;
 
 		Module* importedModule = nullptr;
@@ -740,7 +740,7 @@ bool ImportGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& 
 				}
 
 				char resolvedPathBuffer[MAX_PATH_LENGTH] = {0};
-				if (!searchForFileInPathsWithError(currentToken.contents.c_str(),
+				if (!searchForFileInPathsWithError(dynamicStringToCStr(currentToken.contents),
 				                                   /*encounteredInFile=*/currentToken.source,
 				                                   environment.searchPaths, resolvedPathBuffer,
 				                                   ArraySize(resolvedPathBuffer), currentToken))
@@ -975,7 +975,7 @@ bool DefunGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& c
 	{
 		ObjectDefinition newFunctionDef = {};
 		newFunctionDef.definitionInvocation = &tokens[startTokenIndex];
-		newFunctionDef.name = nameToken.contents.c_str();
+		newFunctionDef.name = dynamicStringToCStr(nameToken.contents);
 		newFunctionDef.type = isCompileTime ? ObjectType_CompileTimeFunction : ObjectType_Function;
 		// Compile-time objects only get built with compile-time references
 		newFunctionDef.isRequired = isCompileTime ? false : context.isRequired;
@@ -999,7 +999,7 @@ bool DefunGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& c
 			CompileTimeFunctionMetadata newMetadata = {};
 			newMetadata.nameToken = &nameToken;
 			newMetadata.startArgsToken = &argsStart;
-			environment.compileTimeFunctionInfo[nameToken.contents.c_str()] = newMetadata;
+			environment.compileTimeFunctionInfo[dynamicStringToCStr(nameToken.contents)] = newMetadata;
 		}
 	}
 
@@ -1269,7 +1269,7 @@ bool VariableDeclarationGenerator(EvaluatorEnvironment& environment,
 		{
 			ObjectDefinition newVariableDef = {};
 			newVariableDef.definitionInvocation = &tokens[startTokenIndex];
-			newVariableDef.name = tokens[varNameIndex].contents.c_str();
+			newVariableDef.name = dynamicStringToCStr(tokens[varNameIndex].contents);
 			newVariableDef.type = ObjectType_Variable;
 			// Required only relevant for compile-time things
 			newVariableDef.isRequired = false;
@@ -1582,7 +1582,7 @@ static bool ComptimeGenerateTokenArguments(const TokenArray& tokens, int startAr
 
 			NameStyleSettings nameStyle;
 			char convertedName[MAX_NAME_LENGTH] = {0};
-			lispNameStyleToCNameStyle(nameStyle.variableNameMode, argument.name->contents.c_str(),
+			lispNameStyleToCNameStyle(nameStyle.variableNameMode, dynamicStringToCStr(argument.name->contents),
 			                          convertedName, sizeof(convertedName), *argument.name);
 
 #define OutputIndexName()                                                                \
@@ -1604,7 +1604,7 @@ static bool ComptimeGenerateTokenArguments(const TokenArray& tokens, int startAr
 			{
 				addStringOutput(output.source, "getExpectedArgument(", StringOutMod_SpaceAfter,
 				                argument.name);
-				addStringOutput(output.source, argument.name->contents.c_str(),
+				addStringOutput(output.source, dynamicStringToCStr(argument.name->contents),
 				                StringOutMod_SurroundWithQuotes, argument.name);
 				addLangTokenOutput(output.source, StringOutMod_ListSeparator, argument.name);
 			}
@@ -1644,7 +1644,7 @@ static bool ComptimeGenerateTokenArguments(const TokenArray& tokens, int startAr
 				addStringOutput(output.source, "!ExpectTokenType(", StringOutMod_None,
 				                argument.name);
 
-				addStringOutput(output.source, argument.name->contents.c_str(),
+				addStringOutput(output.source, dynamicStringToCStr(argument.name->contents),
 				                StringOutMod_SurroundWithQuotes, argument.name);
 				addLangTokenOutput(output.source, StringOutMod_ListSeparator, argument.name);
 				addStringOutput(output.source, "tokens[", StringOutMod_None, argument.name);
@@ -1804,7 +1804,7 @@ bool DefMacroGenerator(EvaluatorEnvironment& environment, const EvaluatorContext
 	if (!ExpectTokenType("defmacro", nameToken, TokenType_Symbol))
 		return false;
 
-	if (findGenerator(environment, nameToken.contents.c_str()))
+	if (findGenerator(environment, dynamicStringToCStr(nameToken.contents)))
 	{
 		ErrorAtToken(nameToken,
 		             "a generator by this name is defined. Generators always take precedence");
@@ -2355,7 +2355,7 @@ static bool DefTypeAliasGenerator(EvaluatorEnvironment& environment,
 
 	NameStyleSettings nameStyle;
 	char convertedName[MAX_NAME_LENGTH] = {0};
-	lispNameStyleToCNameStyle(nameStyle.typeNameMode, tokens[nameIndex].contents.c_str(),
+	lispNameStyleToCNameStyle(nameStyle.typeNameMode, dynamicStringToCStr(tokens[nameIndex].contents),
 	                          convertedName, sizeof(convertedName), tokens[nameIndex]);
 
 	addStringOutput(outputDest, "typedef", StringOutMod_SpaceAfter, &invocationToken);
@@ -2443,12 +2443,12 @@ bool TokenizePushGenerator(EvaluatorEnvironment& environment, const EvaluatorCon
 				crc32(")", 1, &tokensCrc);
 				break;
 			case TokenType_Symbol:
-				crc32(currentToken.contents.c_str(), currentToken.contents.size(), &tokensCrc);
+				crc32(dynamicStringToCStr(currentToken.contents), dynamicStringSize(currentToken.contents), &tokensCrc);
 				break;
 			case TokenType_String:
 				// It's unlikely there would be a collision without these, but we better be sure
 				crc32("\"", 1, &tokensCrc);
-				crc32(currentToken.contents.c_str(), currentToken.contents.size(), &tokensCrc);
+				crc32(dynamicStringToCStr(currentToken.contents), dynamicStringSize(currentToken.contents), &tokensCrc);
 				crc32("\"", 1, &tokensCrc);
 				break;
 			default:
@@ -2557,12 +2557,12 @@ bool TokenizePushGenerator(EvaluatorEnvironment& environment, const EvaluatorCon
 		// }
 		// }
 		ObjectDefinition* definition =
-		    findObjectDefinition(environment, context.definitionName->contents.c_str());
+		    findObjectDefinition(environment, dynamicStringToCStr(context.definitionName->contents));
 		if (!definition)
 		{
 			ErrorAtTokenf(tokens[startTokenIndex],
 			              "could not find definition %s despite definition being set. Code error?",
-			              context.definitionName->contents.c_str());
+			              dynamicStringToCStr(context.definitionName->contents));
 			return false;
 		}
 		definition->tokenizePushTokens[tokensCrc] = &tokens[startOutputToken];
@@ -2574,7 +2574,7 @@ bool TokenizePushGenerator(EvaluatorEnvironment& environment, const EvaluatorCon
 	addStringOutput(output.source, "environment", StringOutMod_None, &tokens[startTokenIndex]);
 	addLangTokenOutput(output.source, StringOutMod_ListSeparator, &tokens[startTokenIndex]);
 
-	addStringOutput(output.source, context.definitionName->contents.c_str(),
+	addStringOutput(output.source, dynamicStringToCStr(context.definitionName->contents),
 	                StringOutMod_SurroundWithQuotes, &tokens[startTokenIndex]);
 	addLangTokenOutput(output.source, StringOutMod_ListSeparator, &tokens[startTokenIndex]);
 
@@ -2618,7 +2618,7 @@ bool ComptimeErrorGenerator(EvaluatorEnvironment& environment, const EvaluatorCo
 	    !ExpectTokenType("comptime-error message", tokens[messageIndex], TokenType_String))
 		return false;
 
-	ErrorAtTokenf(tokens[startTokenIndex], "%s", tokens[messageIndex].contents.c_str());
+	ErrorAtTokenf(tokens[startTokenIndex], "%s", dynamicStringToCStr(tokens[messageIndex].contents));
 	return false;
 }
 
@@ -2840,7 +2840,7 @@ bool DeprecatedGenerator(EvaluatorEnvironment& environment, const EvaluatorConte
                          GeneratorOutput& output)
 {
 	DeprecatedHelpStringMap::iterator findIt =
-	    s_deprecatedHelpStrings.find(tokens[startTokenIndex + 1].contents.c_str());
+	    s_deprecatedHelpStrings.find(dynamicStringToCStr(tokens[startTokenIndex + 1].contents));
 	if (findIt != s_deprecatedHelpStrings.end())
 		ErrorAtTokenf(tokens[startTokenIndex], "this function is now deprecated. %s",
 		             findIt->second);
@@ -3123,7 +3123,7 @@ bool CStatementGenerator(EvaluatorEnvironment& environment, const EvaluatorConte
 			if (statementOperators[i].requiresFeature != RequiredFeature_None)
 				RequiresFeature(
 				    context.module,
-				    findObjectDefinition(environment, context.definitionName->contents.c_str()),
+				    findObjectDefinition(environment, dynamicStringToCStr(context.definitionName->contents)),
 				    statementOperators[i].requiresFeature, &nameToken);
 
 			return CStatementOutput(environment, context, tokens, startTokenIndex,

@@ -237,13 +237,13 @@ static void writeStringOutput(const NameStyleSettings& nameSettings,
 	if (mode)
 	{
 		char convertedName[MAX_NAME_LENGTH] = {0};
-		lispNameStyleToCNameStyle(mode, outputOperation.output.c_str(), convertedName,
+		lispNameStyleToCNameStyle(mode, dynamicStringToCStr(outputOperation.output), convertedName,
 		                          sizeof(convertedName), *outputOperation.startToken);
 		Writer_Writef(state, "%s", convertedName);
 	}
 	else if (outputOperation.modifiers & StringOutMod_SurroundWithQuotes)
 	{
-		const char* stringToOutput = outputOperation.output.c_str();
+		const char* stringToOutput = dynamicStringToCStr(outputOperation.output);
 		Writer_Writef(state, "\"");
 		char previousChar = 0;
 		for (const char* currentChar = stringToOutput; *currentChar; ++currentChar)
@@ -326,7 +326,7 @@ static void writeStringOutput(const NameStyleSettings& nameSettings,
 	else if (outputOperation.modifiers & StringOutMod_ListSeparator)
 		Writer_Writef(state, ", ");
 	else
-		Writer_Writef(state, "%s", outputOperation.output.c_str());
+		Writer_Writef(state, "%s", dynamicStringToCStr(outputOperation.output));
 
 	// We assume we cannot ignore these even in ugly print mode
 	if (outputOperation.modifiers & StringOutMod_SpaceAfter)
@@ -408,9 +408,9 @@ static void writeOutputFollowSplices_Recursive(const NameStyleSettings& nameSett
 	for (const StringOutput& operation : outputOperations)
 	{
 		// Debug print mapping
-		if (!operation.output.empty() && false)
+		if (!dynamicStringIsEmpty(operation.output) && false)
 		{
-			Logf("%s \t%d\tline %d\n", operation.output.c_str(), outputState.numCharsOutput + 1,
+			Logf("%s \t%d\tline %d\n", dynamicStringToCStr(operation.output), outputState.numCharsOutput + 1,
 			     outputState.currentLine + 1);
 		}
 
@@ -646,19 +646,19 @@ bool writeGeneratorOutput(const GeneratorOutput& generatedOutput,
 		Log("\n\tImports:\n");
 		for (const ImportMetadata& import : generatedOutput.imports)
 		{
-			Logf("%s\t(%s)\n", import.importName.c_str(), importLanguageToString(import.language));
+			Logf("%s\t(%s)\n", dynamicStringToCStr(import.importName), importLanguageToString(import.language));
 		}
 
 		Log("\n\tFunctions:\n");
 		for (const FunctionMetadata& function : generatedOutput.functions)
 		{
-			Logf("%s\n", function.name.c_str());
+			Logf("%s\n", dynamicStringToCStr(function.name));
 			if (!function.arguments.empty())
 			{
 				Log("(\n");
 				for (const FunctionArgumentMetadata& argument : function.arguments)
 				{
-					Logf("\t%s\n", argument.name.c_str());
+					Logf("\t%s\n", dynamicStringToCStr(argument.name));
 				}
 				Log(")\n");
 			}

@@ -477,7 +477,7 @@ void printBuiltInGeneratorMetadata(EvaluatorEnvironment* environment)
 		}
 
 		if (!foundMetadata)
-			Logf("warning: built-in generator %s is missing metadata\n", it->first.c_str());
+			Logf("warning: built-in generator %s is missing metadata\n", dynamicStringToCStr(it->first));
 	}
 
 	for (unsigned int i = 0; i < ArraySize(g_generatorMetadata); ++i)

@@ -97,7 +97,7 @@ bool isSpecialSymbol(const Token& token)
 	if (token.type == TokenType_Symbol)
 	{
 		// The size check allows functions to be declared named ':' or '&', but not ':bad' or '&bad'
-		return token.contents.size() > 1 &&
+		return dynamicStringSize(token.contents) > 1 &&
 		       (token.contents[0] == ':' || token.contents[0] == '&' || token.contents[0] == '\'');
 	}
 	else
@@ -229,7 +229,7 @@ void MakeContextUniqueSymbolName(EvaluatorEnvironment& environment, const Evalua
 	}
 
 	ObjectDefinition* definition =
-	    findObjectDefinition(environment, context.definitionName->contents.c_str());
+	    findObjectDefinition(environment, dynamicStringToCStr(context.definitionName->contents));
 	if (!definition)
 	{
 		MakeUniqueSymbolName(environment, prefix, tokenToChange);
@@ -543,7 +543,7 @@ bool parseFunctionSignature(const TokenArray& tokens, int argsIndex,
 			{
 				ErrorAtTokenf(currentToken,
 				              "defun expected argument type, but got symbol or marker %s",
-				              currentToken.contents.c_str());
+				              dynamicStringToCStr(currentToken.contents));
 				return false;
 			}
 
@@ -854,7 +854,7 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 			     dynamicStringEqualsCString(tokens[typeIndex + 1].contents, "ref"));
 
 			if (!isConstPointer)
-				addStringOutput(typeOutput, typeInvocation.contents.c_str(),
+				addStringOutput(typeOutput, dynamicStringToCStr(typeInvocation.contents),
 				                StringOutMod_SpaceAfter, &typeInvocation);
 
 			if (!tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
@@ -862,7 +862,7 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 				return false;
 
 			if (isConstPointer)
-				addStringOutput(typeOutput, typeInvocation.contents.c_str(),
+				addStringOutput(typeOutput, dynamicStringToCStr(typeInvocation.contents),
 				                StringOutMod_SpaceBefore, &typeInvocation);
 		}
 		else if (dynamicStringEqualsCString(typeInvocation.contents, "in"))
@@ -1312,7 +1312,7 @@ bool CompileTimeEvaluateCondition(EvaluatorEnvironment& environment,
 		return false;
 	}
 
-	conditionResult = findCompileTimeSymbol(environment, tokens[startTokenIndex].contents.c_str());
+	conditionResult = findCompileTimeSymbol(environment, dynamicStringToCStr(tokens[startTokenIndex].contents));
 	return true;
 }
 

@@ -240,7 +240,7 @@ void convertBuildArguments(BuildArgumentConverter* argumentsToConvert, int numAr
 				// Give some extra padding for prefixes
 				char argumentOut[MAX_PATH_LENGTH + 15] = {0};
 				argumentsToConvert[typeIndex].argumentConversionFunc(
-				    argumentOut, sizeof(argumentOut), stringIn.c_str(), buildExecutable);
+				    argumentOut, sizeof(argumentOut), dynamicStringToCStr(stringIn), buildExecutable);
 				argumentsToConvert[typeIndex].argumentsOutMemory[currentString] = argumentOut;
 			}
 			else
@@ -251,7 +251,7 @@ void convertBuildArguments(BuildArgumentConverter* argumentsToConvert, int numAr
 
 		for (int stringIndex = 0; stringIndex < numStrings; ++stringIndex)
 			(*argumentsToConvert[typeIndex].argumentsOut)[stringIndex] =
-			    argumentsToConvert[typeIndex].argumentsOutMemory[stringIndex].c_str();
+			    dynamicStringToCStr(argumentsToConvert[typeIndex].argumentsOutMemory[stringIndex]);
 	}
 }
 
@@ -580,7 +580,7 @@ bool buildReadCacheFile(const char* buildOutputDir, ArtifactCrcTable& cachedComm
 			else
 			{
 				Logf("error: unrecognized invocation in %s: %s\n", inputFilename,
-				     invocationToken.contents.c_str());
+				     dynamicStringToCStr(invocationToken.contents));
 				delete tokens;
 				return false;
 			}

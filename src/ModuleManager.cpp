@@ -35,7 +35,7 @@ void listBuiltInGenerators()
 	for (GeneratorIterator it = environment.generators.begin(); it != environment.generators.end();
 	     ++it)
 	{
-		Logf("  %s\n", it->first.c_str());
+		Logf("  %s\n", dynamicStringToCStr(it->first));
 	}
 	environmentDestroyInvalidateTokens(environment);
 }
@@ -505,10 +505,10 @@ bool moduleLoadTokenizeValidate(const char* filename, const TokenArray** tokensO
 				--nestingDepth;
 			}
 
-			if (!token.contents.empty())
+			if (!dynamicStringIsEmpty(token.contents))
 			{
 				printIndentToDepth(nestingDepth);
-				Logf("\t%s\n", token.contents.c_str());
+				Logf("\t%s\n", dynamicStringToCStr(token.contents));
 			}
 		}
 	}
@@ -665,7 +665,7 @@ static bool createBuildOutputDirectory(EvaluatorEnvironment& environment, Dynami
 	for (int i = 0; i < numLabels; ++i)
 	{
 		const DynamicString& label = environment.buildConfigurationLabels[i];
-		if (!writeStringToBuffer(label.c_str(), &writeHead, outputDirName, sizeof(outputDirName)))
+		if (!writeStringToBuffer(dynamicStringToCStr(label), &writeHead, outputDirName, sizeof(outputDirName)))
 		{
 			Log("error: ran out of space writing build configuration output directory name\n");
 			break;
@@ -755,14 +755,14 @@ bool moduleManagerWriteGeneratedOutput(ModuleManager& manager)
 			{
 				if (logging.buildProcess)
 					NoteAtTokenf(*import.fileToImportToken, "Not importing: Header for %s is empty",
-					             import.fileToImportToken->contents.c_str());
+					             dynamicStringToCStr(import.fileToImportToken->contents));
 				continue;
 			}
 
 			// All cakelisp generated files get dumped into a flat directory, so we need to
 			// strip any existing path
 			char relativeFileBuffer[MAX_PATH_LENGTH] = {0};
-			getFilenameFromPath(import.fileToImportToken->contents.c_str(), relativeFileBuffer,
+			getFilenameFromPath(dynamicStringToCStr(import.fileToImportToken->contents), relativeFileBuffer,
 			                    sizeof(relativeFileBuffer));
 			char cakelispExtensionBuffer[MAX_PATH_LENGTH] = {0};
 			// TODO: .h vs. .hpp
@@ -788,21 +788,21 @@ bool moduleManagerWriteGeneratedOutput(ModuleManager& manager)
 		const char* extension = "cpp";
 		// TODO: Enable C vs C++
 		// module->requiredFeatures & RequiredFeature_CppInDefinition ? "cpp" : "c";
-		if (!outputFilenameFromSourceFilename(manager.buildOutputDir.c_str(),
+		if (!outputFilenameFromSourceFilename(dynamicStringToCStr(manager.buildOutputDir),
 		                                      outputSettings.sourceCakelispFilename, extension,
 		                                      sourceOutputName, sizeof(sourceOutputName)))
 			return false;
 		char headerOutputName[MAX_PATH_LENGTH] = {0};
-		if (!outputFilenameFromSourceFilename(manager.buildOutputDir.c_str(),
+		if (!outputFilenameFromSourceFilename(dynamicStringToCStr(manager.buildOutputDir),
 		                                      outputSettings.sourceCakelispFilename, "hpp",
 		                                      headerOutputName, sizeof(headerOutputName)))
 			return false;
 		module->sourceOutputName = sourceOutputName;
 		module->headerOutputName = headerOutputName;
 		outputSettings.sourceOutputName =
-		    shouldWriteSource ? module->sourceOutputName.c_str() : nullptr;
+		    shouldWriteSource ? dynamicStringToCStr(module->sourceOutputName) : nullptr;
 		outputSettings.headerOutputName =
-		    shouldWriteHeader ? module->headerOutputName.c_str() : nullptr;
+		    shouldWriteHeader ? dynamicStringToCStr(module->headerOutputName) : nullptr;
 
 		if (!writeGeneratorOutput(*module->generatedOutput, nameSettings, formatSettings,
 		                          outputSettings))
@@ -850,7 +850,7 @@ void copyModuleBuildOptionsToBuildObject(Module* module, ProcessCommand* buildCo
 	for (const DynamicString& searchDir : module->cSearchDirectories)
 	{
 		char searchDirToArgument[MAX_PATH_LENGTH + 2];
-		makeIncludeArgument(searchDirToArgument, sizeof(searchDirToArgument), searchDir.c_str());
+		makeIncludeArgument(searchDirToArgument, sizeof(searchDirToArgument), dynamicStringToCStr(searchDir));
 		object->includesSearchDirs.push_back(searchDirToArgument);
 	}
 
@@ -868,7 +868,7 @@ bool copyExecutableToFinalOutput(const DynamicString& cachedOutputExecutable,
 	if (logging.fileSystem)
 		Log("Copying executable from cache\n");
 
-	if (!copyBinaryFileTo(cachedOutputExecutable.c_str(), finalOutputName.c_str()))
+	if (!copyBinaryFileTo(dynamicStringToCStr(cachedOutputExecutable), dynamicStringToCStr(finalOutputName)))
 	{
 		Log("error: failed to copy executable from cache\n");
 		return false;
@@ -877,14 +877,14 @@ bool copyExecutableToFinalOutput(const DynamicString& cachedOutputExecutable,
 // TODO: Consider a better place for this
 #ifdef WINDOWS
 	char executableLib[MAX_PATH_LENGTH] = {0};
-	SafeSnprintf(executableLib, sizeof(executableLib), "%s", cachedOutputExecutable.c_str());
+	SafeSnprintf(executableLib, sizeof(executableLib), "%s", dynamicStringToCStr(cachedOutputExecutable));
 
 	bool modifiedExtension = changeExtension(executableLib, "lib");
 
 	if (modifiedExtension && fileExists(executableLib))
 	{
 		char finalOutputLib[MAX_PATH_LENGTH] = {0};
-		SafeSnprintf(finalOutputLib, sizeof(finalOutputLib), "%s", finalOutputName.c_str());
+		SafeSnprintf(finalOutputLib, sizeof(finalOutputLib), "%s", dynamicStringToCStr(finalOutputName));
 		modifiedExtension = changeExtension(finalOutputLib, "lib");
 
 		if (modifiedExtension && !copyBinaryFileTo(executableLib, finalOutputLib))
@@ -895,7 +895,7 @@ bool copyExecutableToFinalOutput(const DynamicString& cachedOutputExecutable,
 	}
 #endif
 
-	addExecutablePermission(finalOutputName.c_str());
+	addExecutablePermission(dynamicStringToCStr(finalOutputName));
 	return true;
 }
 
@@ -950,7 +950,7 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 		ProcessCommand* buildCommandOverride = nullptr;
 		{
 			int buildCommandState = 0;
-			if (!module->buildTimeBuildCommand.fileToExecute.empty())
+			if (!dynamicStringIsEmpty(module->buildTimeBuildCommand.fileToExecute))
 				++buildCommandState;
 			if (!module->buildTimeBuildCommand.arguments.empty())
 				++buildCommandState;
@@ -960,7 +960,7 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 				ErrorAtTokenf(
 				    (*module->tokens)[0],
 				    "error: module build command override must be completely defined. Missing %s\n",
-				    module->buildTimeBuildCommand.fileToExecute.empty() ? "file to execute" :
+				    dynamicStringIsEmpty(module->buildTimeBuildCommand.fileToExecute) ? "file to execute" :
 				                                                          "arguments");
 				buildObjectsFree(buildObjects);
 				return false;
@@ -971,7 +971,7 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 		}
 
 		if (logging.buildProcess)
-			Logf("Build module %s\n", module->sourceOutputName.c_str());
+			Logf("Build module %s\n", dynamicStringToCStr(module->sourceOutputName));
 
 		DynamicStringArray dependencyResolveDirectories;
 		{
@@ -984,7 +984,7 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 		for (ModuleDependency& dependency : module->dependencies)
 		{
 			if (logging.buildProcess)
-				Logf("\tRequires %s\n", dependency.name.c_str());
+				Logf("\tRequires %s\n", dynamicStringToCStr(dependency.name));
 
 			// Cakelisp files are built at the module manager level, so we need not concern
 			// ourselves with them
@@ -995,7 +995,7 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 			{
 				char resolvedDependencyFilename[MAX_PATH_LENGTH] = {0};
 				if (!searchForFileInPathsWithError(
-				        dependency.name.c_str(),
+				        dynamicStringToCStr(dependency.name),
 				        /*encounteredInFile=*/module->filename, dependencyResolveDirectories,
 				        resolvedDependencyFilename, ArraySize(resolvedDependencyFilename),
 				        *dependency.blameToken))
@@ -1007,7 +1007,7 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 
 				char buildObjectName[MAX_PATH_LENGTH] = {0};
 				if (!outputFilenameFromSourceFilename(
-				        manager.buildOutputDir.c_str(), newBuildObject->sourceFilename.c_str(),
+				        dynamicStringToCStr(manager.buildOutputDir), dynamicStringToCStr(newBuildObject->sourceFilename),
 				        compilerObjectExtension, buildObjectName, sizeof(buildObjectName)))
 				{
 					delete newBuildObject;
@@ -1042,7 +1042,7 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 			     ++linkArgumentSet)
 			{
 				for (const DynamicString& str : *(linkArgumentsToAdd[linkArgumentSet].inputs))
-					addStringIfUnique(*(linkArgumentsToAdd[linkArgumentSet].output), str.c_str());
+					addStringIfUnique(*(linkArgumentsToAdd[linkArgumentSet].output), dynamicStringToCStr(str));
 			}
 		}
 
@@ -1059,14 +1059,14 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 			{
 				if (logging.buildProcess)
 					Logf("note: not building module %s because it has no meaningful output\n",
-					     module->sourceOutputName.c_str());
+					     dynamicStringToCStr(module->sourceOutputName));
 				continue;
 			}
 		}
 
 		char buildObjectName[MAX_PATH_LENGTH] = {0};
 		if (!outputFilenameFromSourceFilename(
-		        manager.buildOutputDir.c_str(), module->sourceOutputName.c_str(),
+		        dynamicStringToCStr(manager.buildOutputDir), dynamicStringToCStr(module->sourceOutputName),
 		        compilerObjectExtension, buildObjectName, sizeof(buildObjectName)))
 		{
 			Log("error: failed to create suitable output filename");
@@ -1078,7 +1078,7 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 		// In that case, the status code should still be 0, as if we built and succeeded building it
 		BuildObject* newBuildObject = new BuildObject;
 		newBuildObject->buildStatus = 0;
-		newBuildObject->sourceFilename = module->sourceOutputName.c_str();
+		newBuildObject->sourceFilename = dynamicStringToCStr(module->sourceOutputName);
 		newBuildObject->filename = buildObjectName;
 
 		copyModuleBuildOptionsToBuildObject(module, buildCommandOverride, newBuildObject);
@@ -1121,7 +1121,7 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 
 			char buildObjectName[MAX_PATH_LENGTH] = {0};
 			if (!outputFilenameFromSourceFilename(
-			        manager.buildOutputDir.c_str(), disambiguatedFilename.c_str(),
+			        dynamicStringToCStr(manager.buildOutputDir), dynamicStringToCStr(disambiguatedFilename),
 			        compilerObjectExtension, buildObjectName, sizeof(buildObjectName)))
 			{
 				Log("error: failed to create suitable unambiguous output filename");
@@ -1129,7 +1129,7 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 				return false;
 			}
 			if (logging.fileSystem)
-				Logf("Duplicate output name %s will be corrected: %s\n", filenamePair.first.c_str(),
+				Logf("Duplicate output name %s will be corrected: %s\n", dynamicStringToCStr(filenamePair.first),
 				     buildObjectName);
 			object->filename = buildObjectName;
 		}
@@ -1171,7 +1171,7 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 		                      buildOptions.cSearchDirectories->size());
 		for (const DynamicString& searchDirArg : object->includesSearchDirs)
 		{
-			searchDirArgs.push_back(searchDirArg.c_str());
+			searchDirArgs.push_back(dynamicStringToCStr(searchDirArg));
 		}
 
 		// This code sucks
@@ -1181,9 +1181,9 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 		{
 			char searchDirToArgument[MAX_PATH_LENGTH + 2];
 			makeIncludeArgument(searchDirToArgument, sizeof(searchDirToArgument),
-			                    searchDir.c_str());
+			                    dynamicStringToCStr(searchDir));
 			globalSearchDirArgs.push_back(searchDirToArgument);
-			searchDirArgs.push_back(globalSearchDirArgs.back().c_str());
+			searchDirArgs.push_back(dynamicStringToCStr(globalSearchDirArgs.back()));
 		}
 
 		CStringArray additionalOptions;
@@ -1191,12 +1191,12 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 		                          buildOptions.compilerAdditionalOptions->size());
 		for (const DynamicString& option : object->additionalOptions)
 		{
-			additionalOptions.push_back(option.c_str());
+			additionalOptions.push_back(dynamicStringToCStr(option));
 		}
 
 		for (const DynamicString& option : *buildOptions.compilerAdditionalOptions)
 		{
-			additionalOptions.push_back(option.c_str());
+			additionalOptions.push_back(dynamicStringToCStr(option));
 		}
 
 		ProcessCommand& buildCommand = object->buildCommandOverride ?
@@ -1206,24 +1206,24 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 		// Annoying exception for MSVC not having spaces between some arguments
 		DynamicString* objectOutput = &object->filename;
 		DynamicString objectOutputOverride;
-		if (StrCompareIgnoreCase(buildCommand.fileToExecute.c_str(), "CL.exe") == 0)
+		if (dynamicStringEqualsCString(buildCommand.fileToExecute, "CL.exe"))
 		{
 			char msvcObjectOutput[MAX_PATH_LENGTH] = {0};
 			makeObjectOutputArgument(msvcObjectOutput, sizeof(msvcObjectOutput),
-			                         object->filename.c_str());
+			                         dynamicStringToCStr(object->filename));
 			objectOutputOverride = msvcObjectOutput;
 			objectOutput = &objectOutputOverride;
 		}
 
 		char debugSymbolsName[MAX_PATH_LENGTH] = {0};
-		PrintfBuffer(debugSymbolsName, "%s.%s", object->filename.c_str(),
+		PrintfBuffer(debugSymbolsName, "%s.%s", dynamicStringToCStr(object->filename),
 		             compilerDebugSymbolsExtension);
 		char debugSymbolsArgument[MAX_PATH_LENGTH] = {0};
 		makeDebugSymbolsOutputArgument(debugSymbolsArgument, sizeof(debugSymbolsArgument),
 		                               debugSymbolsName);
 
 		char buildTimeBuildExecutable[MAX_PATH_LENGTH] = {0};
-		if (!resolveExecutablePath(buildCommand.fileToExecute.c_str(), buildTimeBuildExecutable,
+		if (!resolveExecutablePath(dynamicStringToCStr(buildCommand.fileToExecute), buildTimeBuildExecutable,
 		                           sizeof(buildTimeBuildExecutable)))
 		{
 			buildObjectsFree(buildObjects);
@@ -1231,8 +1231,8 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 		}
 
 		ProcessCommandInput buildTimeInputs[] = {
-		    {ProcessCommandArgumentType_SourceInput, {object->sourceFilename.c_str()}},
-		    {ProcessCommandArgumentType_ObjectOutput, {objectOutput->c_str()}},
+		    {ProcessCommandArgumentType_SourceInput, {dynamicStringToCStr(object->sourceFilename)}},
+		    {ProcessCommandArgumentType_ObjectOutput, {dynamicStringToCStr(*objectOutput)}},
 		    {ProcessCommandArgumentType_DebugSymbolsOutput, {debugSymbolsArgument}},
 		    {ProcessCommandArgumentType_IncludeSearchDirs, std::move(searchDirArgs)},
 		    {ProcessCommandArgumentType_AdditionalOptions, std::move(additionalOptions)}};
@@ -1258,8 +1258,8 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 				PushBackAll(headerSearchDirectories, *buildOptions.cSearchDirectories);
 			}
 
-			if (!cppFileNeedsBuild(manager.environment, object->sourceFilename.c_str(),
-			                       object->filename.c_str(), buildArguments,
+			if (!cppFileNeedsBuild(manager.environment, dynamicStringToCStr(object->sourceFilename),
+			                       dynamicStringToCStr(object->filename), buildArguments,
 			                       manager.cachedCommandCrcs, manager.newCommandCrcs,
 			                       headerModifiedCache, headerSearchDirectories))
 			{
@@ -1309,17 +1309,17 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 	for (BuildObject* object : buildObjects)
 	{
 		int buildResult = object->buildStatus;
-		if (buildResult != 0 || !fileExists(object->filename.c_str()))
+		if (buildResult != 0 || !fileExists(dynamicStringToCStr(object->filename)))
 		{
-			Logf("error: failed to make target %s\n", object->filename.c_str());
+			Logf("error: failed to make target %s\n", dynamicStringToCStr(object->filename));
 			// Forget that the command was changed because the artifact wasn't successfully built
-			manager.newCommandCrcs.erase(object->filename.c_str());
+			manager.newCommandCrcs.erase(dynamicStringToCStr(object->filename));
 			succeededBuild = false;
 		}
 		else
 		{
-			setSourceArtifactCrc(manager.environment, object->sourceFilename.c_str(),
-			                     object->filename.c_str());
+			setSourceArtifactCrc(manager.environment, dynamicStringToCStr(object->sourceFilename),
+			                     dynamicStringToCStr(object->filename));
 		}
 	}
 
@@ -1339,17 +1339,17 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 	if (!buildOptions.executableOutput->empty())
 	{
 		char outputExecutableFilename[MAX_PATH_LENGTH] = {0};
-		getFilenameFromPath(buildOptions.executableOutput->c_str(), outputExecutableFilename,
+		getFilenameFromPath(dynamicStringToCStr(*buildOptions.executableOutput), outputExecutableFilename,
 		                    sizeof(outputExecutableFilename));
 
 		outputExecutableName = outputExecutableFilename;
 	}
-	if (outputExecutableName.empty())
+	if (dynamicStringIsEmpty(outputExecutableName))
 		outputExecutableName = defaultExecutableName;
 
 	char outputExecutableCachePath[MAX_PATH_LENGTH] = {0};
 	if (!outputFilenameFromSourceFilename(
-	        buildOptions.buildOutputDir->c_str(), outputExecutableName.c_str(),
+	        dynamicStringToCStr(*buildOptions.buildOutputDir), dynamicStringToCStr(outputExecutableName),
 	        /*addExtension=*/nullptr, outputExecutableCachePath, sizeof(outputExecutableCachePath)))
 	{
 		buildObjectsFree(buildObjects);
@@ -1361,30 +1361,30 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 	for (BuildObject* object : buildObjects)
 	{
 		if (logging.buildProcess)
-			Logf("Need to link %s\n", object->filename.c_str());
+			Logf("Need to link %s\n", dynamicStringToCStr(object->filename));
 
 		// If all our objects are older than our executable, don't even link!
-		objectsDirty |= !canUseCachedFile(manager.environment, object->filename.c_str(),
-		                                  outputExecutableName.c_str());
+		objectsDirty |= !canUseCachedFile(manager.environment, dynamicStringToCStr(object->filename),
+		                                  dynamicStringToCStr(outputExecutableName));
 	}
 
 	for (const DynamicString& staticLinkObject : *buildOptions.staticLinkObjects)
 	{
 		char foundFilePath[MAX_PATH_LENGTH] = {0};
-		if (searchForFileInPaths(staticLinkObject.c_str(), nullptr, buildOptions.librarySearchDirs,
+		if (searchForFileInPaths(dynamicStringToCStr(staticLinkObject), nullptr, buildOptions.librarySearchDirs,
 		                         foundFilePath, sizeof(foundFilePath)))
 		{
-			objectsDirty |= fileIsMoreRecentlyModified(foundFilePath, outputExecutableName.c_str());
+			objectsDirty |= fileIsMoreRecentlyModified(foundFilePath, dynamicStringToCStr(outputExecutableName));
 		}
 		else
 		{
 			Logf(
 			    "warning: could not find static link object %s. Your build may become stale if "
 			    "that object has changed recently. It was looked for in the following paths:\n",
-			    staticLinkObject.c_str());
+			    dynamicStringToCStr(staticLinkObject));
 			for (const DynamicString& searchPath : buildOptions.librarySearchDirs)
 			{
-				Logf("\t%s\n", searchPath.c_str());
+				Logf("\t%s\n", dynamicStringToCStr(searchPath));
 			}
 		}
 	}
@@ -1404,11 +1404,11 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 		objectsToLink.reserve(numObjectsToLink);
 		for (BuildObject* object : buildObjects)
 		{
-			objectsToLink.push_back(object->filename.c_str());
+			objectsToLink.push_back(dynamicStringToCStr(object->filename));
 		}
 		for (const DynamicString& staticLinkObject : *buildOptions.staticLinkObjects)
 		{
-			objectsToLink.push_back(staticLinkObject.c_str());
+			objectsToLink.push_back(dynamicStringToCStr(staticLinkObject));
 		}
 
 		// Copy it so hooks can modify it
@@ -1439,7 +1439,7 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 		    // We can't know how to auto-convert these because they could be anything
 		    {&buildOptions.compilerLinkOptions, {}, &compilerLinkArgs, nullptr}};
 		convertBuildArguments(convertedArguments, ArraySize(convertedArguments),
-		                      linkCommand.fileToExecute.c_str());
+		                      dynamicStringToCStr(linkCommand.fileToExecute));
 
 		ProcessCommandInput linkTimeInputs[] = {
 		    {ProcessCommandArgumentType_ExecutableOutput, executableToArgs},
@@ -1463,7 +1463,7 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 		}
 
 		char buildTimeLinkExecutable[MAX_PATH_LENGTH] = {0};
-		if (!resolveExecutablePath(linkCommand.fileToExecute.c_str(), buildTimeLinkExecutable,
+		if (!resolveExecutablePath(dynamicStringToCStr(linkCommand.fileToExecute), buildTimeLinkExecutable,
 		                           sizeof(buildTimeLinkExecutable)))
 		{
 			buildObjectsFree(buildObjects);
@@ -1481,7 +1481,7 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 
 		CrcWithFlags commandCrc = {0};
 		bool commandEqualsCached = commandEqualsCachedCommand(
-		    manager.cachedCommandCrcs, finalOutputName.c_str(), linkArgumentList, &commandCrc);
+		    manager.cachedCommandCrcs, dynamicStringToCStr(finalOutputName), linkArgumentList, &commandCrc);
 
 		// Check if we can use the cached version
 		if (!objectsDirty && commandEqualsCached)
@@ -1498,7 +1498,7 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 					return false;
 				}
 
-				Logf("No changes needed for %s\n", finalOutputName.c_str());
+				Logf("No changes needed for %s\n", dynamicStringToCStr(finalOutputName));
 				builtOutputs.push_back(finalOutputName);
 			}
 
@@ -1509,7 +1509,7 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 
 		if (logging.buildReasons)
 		{
-			Logf("Link %s reason(s):\n", finalOutputName.c_str());
+			Logf("Link %s reason(s):\n", dynamicStringToCStr(finalOutputName));
 			if (objectsDirty)
 				Log("\tobject files updated\n");
 			if (!commandEqualsCached)
@@ -1553,10 +1553,10 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 		}
 
 		for (BuildObject* object : buildObjects)
-			setSourceArtifactCrc(manager.environment, object->filename.c_str(),
-			                     outputExecutableName.c_str());
+			setSourceArtifactCrc(manager.environment, dynamicStringToCStr(object->filename),
+			                     dynamicStringToCStr(outputExecutableName));
 
-		Logf("Successfully built and linked %s\n", finalOutputName.c_str());
+		Logf("Successfully built and linked %s\n", dynamicStringToCStr(finalOutputName));
 		builtOutputs.push_back(finalOutputName);
 	}
 
@@ -1566,7 +1566,7 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 
 bool moduleManagerBuildAndLink(ModuleManager& manager, DynamicStringArray& builtOutputs)
 {
-	if (!buildReadCacheFile(manager.buildOutputDir.c_str(), manager.cachedCommandCrcs,
+	if (!buildReadCacheFile(dynamicStringToCStr(manager.buildOutputDir), manager.cachedCommandCrcs,
 	                        manager.environment.sourceArtifactFileCrcs, manager.environment.loadedHeaderCrcCache))
 		return false;
 
@@ -1581,7 +1581,7 @@ bool moduleManagerBuildAndLink(ModuleManager& manager, DynamicStringArray& built
 		// Remember any succeeded artifact command CRCs so they don't get forgotten just because
 		// some others failed
 		buildReadMergeWriteCacheFile(
-		    manager.buildOutputDir.c_str(), manager.cachedCommandCrcs, manager.newCommandCrcs,
+		    dynamicStringToCStr(manager.buildOutputDir), manager.cachedCommandCrcs, manager.newCommandCrcs,
 		    manager.environment.sourceArtifactFileCrcs, manager.environment.changedHeaderCrcCache);
 		return false;
 	}
@@ -1591,12 +1591,12 @@ bool moduleManagerBuildAndLink(ModuleManager& manager, DynamicStringArray& built
 		// Remember any succeeded artifact command CRCs so they don't get forgotten just because
 		// some others failed
 		buildReadMergeWriteCacheFile(
-		    manager.buildOutputDir.c_str(), manager.cachedCommandCrcs, manager.newCommandCrcs,
+		    dynamicStringToCStr(manager.buildOutputDir), manager.cachedCommandCrcs, manager.newCommandCrcs,
 		    manager.environment.sourceArtifactFileCrcs, manager.environment.changedHeaderCrcCache);
 		return false;
 	}
 
-	buildReadMergeWriteCacheFile(manager.buildOutputDir.c_str(), manager.cachedCommandCrcs,
+	buildReadMergeWriteCacheFile(dynamicStringToCStr(manager.buildOutputDir), manager.cachedCommandCrcs,
 	                             manager.newCommandCrcs, manager.environment.sourceArtifactFileCrcs,
 	                             manager.environment.changedHeaderCrcCache);
 
@@ -1624,7 +1624,7 @@ bool moduleManagerExecuteBuiltOutputs(ModuleManager& manager,
 	{
 		RunProcessArguments arguments = {};
 		// Need to use absolute path when executing
-		const char* executablePath = makeAbsolutePath_Allocated(nullptr, output.c_str());
+		const char* executablePath = makeAbsolutePath_Allocated(nullptr, dynamicStringToCStr(output));
 		arguments.fileToExecute = executablePath;
 		const char* commandLineArguments[] = {StrDuplicate(arguments.fileToExecute), nullptr};
 		arguments.arguments = commandLineArguments;
@@ -1636,7 +1636,7 @@ bool moduleManagerExecuteBuiltOutputs(ModuleManager& manager,
 
 		if (runProcess(arguments, &status) != 0)
 		{
-			Logf("error: execution of %s failed\n", output.c_str());
+			Logf("error: execution of %s failed\n", dynamicStringToCStr(output));
 			free((void*)executablePath);
 			free((void*)commandLineArguments[0]);
 			return false;
@@ -1649,7 +1649,7 @@ bool moduleManagerExecuteBuiltOutputs(ModuleManager& manager,
 
 		if (status != 0)
 		{
-			Logf("error: execution of %s returned non-zero exit code %d\n", output.c_str(), status);
+			Logf("error: execution of %s returned non-zero exit code %d\n", dynamicStringToCStr(output), status);
 			// Why not return the exit code? Because some exit codes end up becoming 0 after the
 			// mod 256. I'm not really sure how other programs handle this
 			return false;

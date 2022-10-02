@@ -440,7 +440,7 @@ void waitForAllProcessesClosed(SubprocessOnOutputFunc onOutput)
 
 		// It's pretty useful to see the command which resulted in failure
 		if (*process->statusOut != 0)
-			Logf("%s\n", process->command.c_str());
+			Logf("%s\n", dynamicStringToCStr(process->command));
 #elif WINDOWS
 
 		// We cannot wait indefinitely because the process eventually waits for us to read from the
@@ -464,7 +464,7 @@ void waitForAllProcessesClosed(SubprocessOnOutputFunc onOutput)
 		}
 		else if (exitCode != 0)
 		{
-			Logf("%s\n", process->command.c_str());
+			Logf("%s\n", dynamicStringToCStr(process->command));
 		}
 
 		*(process->statusOut) = exitCode;
@@ -545,7 +545,7 @@ const char** MakeProcessArgumentsFromCommand(const char* fileToExecute,
 		ProcessCommandArgument& argument = arguments[i];
 
 		if (argument.type == ProcessCommandArgumentType_String)
-			argumentsAccumulate.push_back(argument.contents.c_str());
+			argumentsAccumulate.push_back(dynamicStringToCStr(argument.contents));
 		else
 		{
 			bool found = false;

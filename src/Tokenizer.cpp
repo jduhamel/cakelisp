@@ -248,7 +248,7 @@ const char* tokenizeLine(const char* inputLine, const char* source, unsigned int
 					Token pseudoSymbol = {TokenType_Symbol, EmptyString, source,
 					                      lineNumber,       columnStart, currentColumn + 1};
 					CopyContentsAndReset(pseudoSymbol.contents);
-					// Logf("Write C literal: <%s>\n", pseudoSymbol.contents.c_str());
+					// Logf("Write C literal: <%s>\n", dynamicStringToCStr(pseudoSymbol.contents));
 					tokensOut.push_back(pseudoSymbol);
 					tokenizeState = TokenizeState_Normal;
 				}
@@ -262,7 +262,7 @@ const char* tokenizeLine(const char* inputLine, const char* source, unsigned int
 						                         lineNumber,       columnStart, currentColumn + 1};
 						CopyContentsAndReset(lispStyleSymbol.contents);
 						tokensOut.push_back(lispStyleSymbol);
-						// Logf("Write symbol: <%s>\n", lispStyleSymbol.contents.c_str());
+						// Logf("Write symbol: <%s>\n", dynamicStringToCStr(lispStyleSymbol.contents));
 
 						// We also need to push this paren (or go back one char, but I like this
 						// better because it's a bit easier to follow)
@@ -293,7 +293,7 @@ const char* tokenizeLine(const char* inputLine, const char* source, unsigned int
 						tokensOut.push_back(lispStyleSymbol);
 						tokenizeState = TokenizeState_Normal;
 						// Logf("Write lisp-style symbol: <%s>\n",
-						// lispStyleSymbol.contents.c_str());
+						// dynamicStringToCStr(lispStyleSymbol.contents));
 					}
 				}
 				else
@@ -312,7 +312,7 @@ const char* tokenizeLine(const char* inputLine, const char* source, unsigned int
 
 					DynamicString appendString;
 					CopyContentsAndReset(appendString);
-					previousToken.contents.append(appendString);
+					dynamicStringAppendString(&previousToken.contents, appendString);
 					previousToken.type = TokenType_String;
 					tokenizeState = TokenizeState_Normal;
 					currentChar += 2;
@@ -350,7 +350,7 @@ const char* tokenizeLine(const char* inputLine, const char* source, unsigned int
 				Token& previousToken = tokensOut.back();
 				DynamicString appendString;
 				CopyContentsAndReset(appendString);
-				previousToken.contents.append(appendString);
+				dynamicStringAppendString(&previousToken.contents, appendString);
 				previousToken.type = TokenType_StringContinue;
 				break;
 			}
@@ -360,7 +360,7 @@ const char* tokenizeLine(const char* inputLine, const char* source, unsigned int
 				Token& previousToken = tokensOut.back();
 				DynamicString appendString;
 				CopyContentsAndReset(appendString);
-				previousToken.contents.append(appendString);
+				dynamicStringAppendString(&previousToken.contents, appendString);
 				previousToken.type = TokenType_HereString;
 				break;
 			}
@@ -374,7 +374,7 @@ const char* tokenizeLine(const char* inputLine, const char* source, unsigned int
 					{
 						DynamicString appendString;
 						CopyContentsAndReset(appendString);
-						previousToken.contents.append(appendString);
+						dynamicStringAppendString(&previousToken.contents, appendString);
 						previousToken.type = TokenType_StringContinue;
 						tokenizeState = TokenizeState_Normal;
 						break;
@@ -492,7 +492,7 @@ bool appendTokenToString(const Token& token, char** at, char* bufferStart, int b
 				if (!writeCharToBufferErrorToken(' ', at, bufferStart, bufferSize, token))
 					return false;
 			}
-			if (!writeStringToBufferErrorToken(token.contents.c_str(), at, bufferStart, bufferSize,
+			if (!writeStringToBufferErrorToken(dynamicStringToCStr(token.contents), at, bufferStart, bufferSize,
 			                                   token))
 				return false;
 			return writeCharToBufferErrorToken(' ', at, bufferStart, bufferSize, token);
@@ -506,7 +506,7 @@ bool appendTokenToString(const Token& token, char** at, char* bufferStart, int b
 			if (!writeStringToBufferErrorToken("\\\"", at, bufferStart, bufferSize, token))
 				return false;
 			// TODO Need to delimit quotes properly (try e.g. "test\"" and see it break)
-			if (!writeStringToBufferErrorToken(token.contents.c_str(), at, bufferStart, bufferSize,
+			if (!writeStringToBufferErrorToken(dynamicStringToCStr(token.contents), at, bufferStart, bufferSize,
 			                                   token))
 				return false;
 
@@ -530,10 +530,10 @@ void printFormattedToken(FILE* fileOut, const Token& token)
 			fprintf(fileOut, ")");
 			break;
 		case TokenType_Symbol:
-			fprintf(fileOut, "%s", token.contents.c_str());
+			fprintf(fileOut, "%s", dynamicStringToCStr(token.contents));
 			break;
 		case TokenType_String:
-			fprintf(fileOut, "\"%s\"", token.contents.c_str());
+			fprintf(fileOut, "\"%s\"", dynamicStringToCStr(token.contents));
 			break;
 		default:
 			fprintf(fileOut, "Unknown type");

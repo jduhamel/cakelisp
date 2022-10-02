@@ -67,11 +67,11 @@ static bool isCompileTimeCodeLoaded(EvaluatorEnvironment& environment,
 	switch (definition.type)
 	{
 		case ObjectType_CompileTimeMacro:
-			return findMacro(environment, definition.name.c_str()) != nullptr;
+			return findMacro(environment, dynamicStringToCStr(definition.name)) != nullptr;
 		case ObjectType_CompileTimeGenerator:
-			return findGenerator(environment, definition.name.c_str()) != nullptr;
+			return findGenerator(environment, dynamicStringToCStr(definition.name)) != nullptr;
 		case ObjectType_CompileTimeFunction:
-			return findCompileTimeFunction(environment, definition.name.c_str()) != nullptr;
+			return findCompileTimeFunction(environment, dynamicStringToCStr(definition.name)) != nullptr;
 		default:
 			return false;
 	}
@@ -87,7 +87,7 @@ bool addObjectDefinition(EvaluatorEnvironment& environment, ObjectDefinition& de
 			ErrorAtTokenf(*definition.definitionInvocation,
 			              "multiple definitions of %s. Name may be conflicting with built-in macro "
 			              "or generator",
-			              definition.name.c_str());
+			              dynamicStringToCStr(definition.name));
 			return false;
 		}
 
@@ -97,7 +97,7 @@ bool addObjectDefinition(EvaluatorEnvironment& environment, ObjectDefinition& de
 	else
 	{
 		ErrorAtTokenf(*definition.definitionInvocation, "multiple definitions of %s",
-		              definition.name.c_str());
+		              dynamicStringToCStr(definition.name));
 		NoteAtToken(*findIt->second.definitionInvocation, "first defined here");
 		return false;
 	}
@@ -125,9 +125,9 @@ const ObjectReferenceStatus* addObjectReference(EvaluatorEnvironment& environmen
 		definitionName = reference.context.definitionName->contents;
 	}
 
-	const char* defName = definitionName.c_str();
+	const char* defName = dynamicStringToCStr(definitionName);
 	if (logging.references)
-		Logf("Adding reference %s to %s\n", referenceNameToken.contents.c_str(), defName);
+		Logf("Adding reference %s to %s\n", dynamicStringToCStr(referenceNameToken.contents), defName);
 
 	// Add the reference requirement to the definition it occurred in
 	ObjectReferenceStatus* refStatus = nullptr;
@@ -137,7 +137,7 @@ const ObjectReferenceStatus* addObjectReference(EvaluatorEnvironment& environmen
 		if (!dynamicStringEqualsCString(definitionName, globalDefinitionName))
 		{
 			Logf("error: expected definition %s to already exist. Things will break\n",
-			     definitionName.c_str());
+			     dynamicStringToCStr(definitionName));
 		}
 		else
 		{
@@ -152,7 +152,7 @@ const ObjectReferenceStatus* addObjectReference(EvaluatorEnvironment& environmen
 		// make a good link to the reference in the reference pool, because it can easily be moved
 		// by hash realloc or vector resize
 		ObjectReferenceStatusMap::iterator findRefIt =
-		    findDefinition->second.references.find(referenceNameToken.contents.c_str());
+		    findDefinition->second.references.find(dynamicStringToCStr(referenceNameToken.contents));
 		if (findRefIt == findDefinition->second.references.end())
 		{
 			ObjectReferenceStatus newStatus;
@@ -242,7 +242,7 @@ bool GetCompileTimeVariable(EvaluatorEnvironment& environment, const char* name,
 		Logf(
 		    "error: GetCompileTimeVariable(): type does not match existing variable %s. Types must "
 		    "match exactly. Expected %s, got %s\n",
-		    name, findIt->second.type.c_str(), typeExpression);
+		    name, dynamicStringToCStr(findIt->second.type), typeExpression);
 		return false;
 	}
 
@@ -266,7 +266,7 @@ bool HandleInvocation_Recursive(EvaluatorEnvironment& environment, const Evaluat
 	if (!ExpectTokenType("evaluator", invocationName, TokenType_Symbol))
 		return false;
 
-	MacroFunc invokedMacro = findMacro(environment, invocationName.contents.c_str());
+	MacroFunc invokedMacro = findMacro(environment, dynamicStringToCStr(invocationName.contents));
 	if (invokedMacro)
 	{
 		// We must use a separate vector for each macro because Token lists must be immutable. If
@@ -289,7 +289,7 @@ bool HandleInvocation_Recursive(EvaluatorEnvironment& environment, const Evaluat
 		if (!macroSucceeded)
 		{
 			ErrorAtTokenf(invocationName, "macro '%s' returned failure",
-			              invocationName.contents.c_str());
+			              dynamicStringToCStr(invocationName.contents));
 
 			// Deleting these tokens is only safe at this point because we know we have not
 			// evaluated them. As soon as they are evaluated, they must be kept around
@@ -344,7 +344,7 @@ bool HandleInvocation_Recursive(EvaluatorEnvironment& environment, const Evaluat
 				ErrorAtTokenf(invocationStart,
 				              "could not find definition '%s' to associate macro expansion "
 				              "(internal code error)",
-				              context.definitionName->contents.c_str());
+				              dynamicStringToCStr(context.definitionName->contents));
 		}
 
 		// Note that macros always inherit the current context, whereas bodies change it
@@ -362,10 +362,10 @@ bool HandleInvocation_Recursive(EvaluatorEnvironment& environment, const Evaluat
 		return true;
 	}
 
-	GeneratorFunc invokedGenerator = findGenerator(environment, invocationName.contents.c_str());
+	GeneratorFunc invokedGenerator = findGenerator(environment, dynamicStringToCStr(invocationName.contents));
 	if (invokedGenerator)
 	{
-		environment.lastGeneratorReferences[invocationName.contents.c_str()] =
+		environment.lastGeneratorReferences[dynamicStringToCStr(invocationName.contents)] =
 		    &tokens[invocationStartIndex];
 
 		return invokedGenerator(environment, context, tokens, invocationStartIndex, output);
@@ -381,7 +381,7 @@ bool HandleInvocation_Recursive(EvaluatorEnvironment& environment, const Evaluat
 			                                   output);
 
 		if (findIt->second.type == ObjectType_CompileTimeFunction &&
-		    findCompileTimeFunction(environment, invocationName.contents.c_str()))
+		    findCompileTimeFunction(environment, dynamicStringToCStr(invocationName.contents)))
 		{
 			if (context.resolvingReference != &invocationName)
 			{
@@ -420,7 +420,7 @@ bool HandleInvocation_Recursive(EvaluatorEnvironment& environment, const Evaluat
 
 		if (logging.splices)
 			NoteAtTokenf(invocationName, "unknown reference to %s, creating splice %p",
-			             invocationName.contents.c_str(), newReference.spliceOutput);
+			             dynamicStringToCStr(invocationName.contents), newReference.spliceOutput);
 
 		// We push in a StringOutMod_Splice as a sentinel that the splice list needs to be
 		// checked. Otherwise, it will be a no-op to Writer. It's useful to have this sentinel
@@ -513,7 +513,7 @@ int EvaluateGenerate_Recursive(EvaluatorEnvironment& environment, const Evaluato
 					// We need to convert what look like names in case they are lispy, but not
 					// integer, character, or floating point constants
 					char firstChar = token.contents[0];
-					char secondChar = token.contents.size() > 1 ? token.contents[1] : 0;
+					char secondChar = dynamicStringSize(token.contents) > 1 ? token.contents[1] : 0;
 					if (firstChar == '\'' || isdigit(firstChar) ||
 					    (firstChar == '-' && (secondChar == '.' || isdigit(secondChar))))
 						addStringOutput(output.source, token.contents, StringOutMod_None, &token);
@@ -552,9 +552,9 @@ int EvaluateGenerateAll_Recursive(EvaluatorEnvironment& environment,
 	// Note that in most cases, we will continue evaluation in order to turn up more errors
 	int numErrors = 0;
 
-	bool isDelimiterUsed = !context.delimiterTemplate.output.empty() ||
+	bool isDelimiterUsed = !dynamicStringIsEmpty(context.delimiterTemplate.output) ||
 	                       context.delimiterTemplate.modifiers != StringOutMod_None;
-	bool isDelimiterSyntactic = !context.delimiterTemplate.output.empty() ||
+	bool isDelimiterSyntactic = !dynamicStringIsEmpty(context.delimiterTemplate.output) ||
 	                            context.delimiterTemplate.modifiers != StringOutMod_NewlineAfter;
 
 	// Used to detect when something was actually output during evaluation
@@ -699,12 +699,12 @@ static void PropagateRequiredToReferences(EvaluatorEnvironment& environment)
 			if (definition.type == ObjectType_CompileTimeFunction && !definition.isRequired)
 			{
 				RequiredCompileTimeFunctionReasonsTableIterator findIt =
-				    environment.requiredCompileTimeFunctions.find(definition.name.c_str());
+				    environment.requiredCompileTimeFunctions.find(dynamicStringToCStr(definition.name));
 
 				if (findIt != environment.requiredCompileTimeFunctions.end())
 				{
 					if (logging.dependencyPropagation)
-						Logf("Define %s promoted to required because %s\n", definition.name.c_str(),
+						Logf("Define %s promoted to required because %s\n", dynamicStringToCStr(definition.name),
 						     findIt->second);
 
 					definition.isRequired = true;
@@ -715,7 +715,7 @@ static void PropagateRequiredToReferences(EvaluatorEnvironment& environment)
 			if (logging.dependencyPropagation)
 			{
 				const char* status = definition.isRequired ? "(required)" : "(not required)";
-				Logf("Define %s %s\n", definition.name.c_str(), status);
+				Logf("Define %s %s\n", dynamicStringToCStr(definition.name), status);
 			}
 
 			for (ObjectReferenceStatusPair& reference : definition.references)
@@ -723,7 +723,7 @@ static void PropagateRequiredToReferences(EvaluatorEnvironment& environment)
 				ObjectReferenceStatus& referenceStatus = reference.second;
 
 				if (logging.dependencyPropagation)
-					Logf("\tRefers to %s\n", referenceStatus.name->contents.c_str());
+					Logf("\tRefers to %s\n", dynamicStringToCStr(referenceStatus.name->contents));
 
 				if (definition.isRequired)
 				{
@@ -733,7 +733,7 @@ static void PropagateRequiredToReferences(EvaluatorEnvironment& environment)
 					{
 						if (logging.dependencyPropagation)
 							Logf("\t Infecting %s with required due to %s\n",
-							     referenceStatus.name->contents.c_str(), definition.name.c_str());
+							     dynamicStringToCStr(referenceStatus.name->contents), dynamicStringToCStr(definition.name));
 
 						++numRequiresStatusChanged;
 						findIt->second.isRequired = true;
@@ -907,7 +907,7 @@ bool ComptimePrepareHeaders(EvaluatorEnvironment& environment)
 		// modification, comptime code can end up calling stale functions/initializing
 		// incorrect types
 		headerSearchDirectories.push_back(
-		    environment.cakelispSrcDir.empty() ? "src" : environment.cakelispSrcDir);
+		    dynamicStringIsEmpty(environment.cakelispSrcDir) ? "src" : environment.cakelispSrcDir);
 	}
 
 	char combinedHeaderRelativePath[MAX_PATH_LENGTH] = {0};
@@ -921,7 +921,7 @@ bool ComptimePrepareHeaders(EvaluatorEnvironment& environment)
 		return false;
 
 	const char* buildExecutable =
-	    environment.compileTimeHeaderPrecompilerCommand.fileToExecute.c_str();
+	    dynamicStringToCStr(environment.compileTimeHeaderPrecompilerCommand.fileToExecute);
 
 	char precompiledHeaderFilename[MAX_PATH_LENGTH] = {0};
 	if (!outputFilenameFromSourceFilename(outputDir, combinedHeaderRelativePath,
@@ -938,11 +938,11 @@ bool ComptimePrepareHeaders(EvaluatorEnvironment& environment)
 	                                    precompiledHeaderFilename, buildExecutable);
 
 	char headerInclude[MAX_PATH_LENGTH] = {0};
-	if (environment.cakelispSrcDir.empty())
+	if (dynamicStringIsEmpty(environment.cakelispSrcDir))
 		makeIncludeArgument(headerInclude, sizeof(headerInclude), "src/");
 	else
 		makeIncludeArgument(headerInclude, sizeof(headerInclude),
-		                    environment.cakelispSrcDir.c_str());
+		                    dynamicStringToCStr(environment.cakelispSrcDir));
 
 	char precompileHeaderExecutable[MAX_PATH_LENGTH] = {0};
 	if (!resolveExecutablePath(buildExecutable, precompileHeaderExecutable,
@@ -1013,7 +1013,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 {
 	int numReferencesResolved = 0;
 
-	if (environment.cakelispSrcDir.empty() && !definitionsToBuild.empty())
+	if (dynamicStringIsEmpty(environment.cakelispSrcDir) && !definitionsToBuild.empty())
 	{
 		const char* missingSrcError =
 		    "Cannot build compile-time macros, generators, or functions because "
@@ -1037,25 +1037,25 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 	}
 
 	char compileTimeBuildExecutable[MAX_PATH_LENGTH] = {0};
-	if (!resolveExecutablePath(environment.compileTimeBuildCommand.fileToExecute.c_str(),
+	if (!resolveExecutablePath(dynamicStringToCStr(environment.compileTimeBuildCommand.fileToExecute),
 	                           compileTimeBuildExecutable, sizeof(compileTimeBuildExecutable)))
 	{
 		Logf("error: could not find compile-time compiler %s\n",
-		     environment.compileTimeBuildCommand.fileToExecute.c_str());
+		     dynamicStringToCStr(environment.compileTimeBuildCommand.fileToExecute));
 		++numErrorsOut;
 		return 0;
 	}
 
 	bool comptimeCanUsePrecompiledHeaders = environment.comptimeUsePrecompiledHeaders &&
 	                                        environment.comptimeHeadersPrepared &&
-	                                        !environment.comptimeCombinedHeaderFilename.empty();
+	                                        !dynamicStringIsEmpty(environment.comptimeCombinedHeaderFilename);
 	const char* cakelispCombinedHeaderFilename = nullptr;
 	char usePrecompiledHeaderArgument[MAX_PATH_LENGTH] = {0};
 	DynamicStringArray precompiledHeadersToIncludeStorage;
 	CStringArray precompiledHeadersToInclude;
 	if (comptimeCanUsePrecompiledHeaders)
 	{
-		cakelispCombinedHeaderFilename = environment.comptimeCombinedHeaderFilename.c_str();
+		cakelispCombinedHeaderFilename = dynamicStringToCStr(environment.comptimeCombinedHeaderFilename);
 
 		makePrecompiledHeaderIncludeArgument(
 		    usePrecompiledHeaderArgument, sizeof(usePrecompiledHeaderArgument),
@@ -1066,7 +1066,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		precompiledHeadersToIncludeStorage.push_back(cakelispCombinedHeaderFilename);
 		precompiledHeadersToInclude.reserve(precompiledHeadersToIncludeStorage.size());
 		for (const DynamicString& arg : precompiledHeadersToIncludeStorage)
-			precompiledHeadersToInclude.push_back(arg.c_str());
+			precompiledHeadersToInclude.push_back(dynamicStringToCStr(arg));
 	}
 
 	char precompiledHeadersInclude[MAX_PATH_LENGTH] = {0};
@@ -1084,7 +1084,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		ObjectDefinition* definition = buildObject.definition;
 
 		if (logging.buildProcess)
-			Logf("Build %s\n", definition->name.c_str());
+			Logf("Build %s\n", dynamicStringToCStr(definition->name));
 
 		if (!definition->output)
 		{
@@ -1094,7 +1094,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		}
 
 		char convertedNameBuffer[MAX_NAME_LENGTH] = {0};
-		lispNameStyleToCNameStyle(NameStyleMode_Underscores, definition->name.c_str(),
+		lispNameStyleToCNameStyle(NameStyleMode_Underscores, dynamicStringToCStr(definition->name),
 		                          convertedNameBuffer, sizeof(convertedNameBuffer),
 		                          *definition->definitionInvocation);
 		char artifactsName[MAX_PATH_LENGTH] = {0};
@@ -1104,7 +1104,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		char fileOutputName[MAX_PATH_LENGTH] = {0};
 		// Writer will append the appropriate file extensions
 		PrintfBuffer(fileOutputName, "%s/%s", cakelispWorkingDir,
-		             buildObject.artifactsName.c_str());
+		             dynamicStringToCStr(buildObject.artifactsName));
 
 		// Output definition to a file our compiler will be happy with
 		// TODO: Make these come from the top
@@ -1140,7 +1140,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 			if (requiredDefinition->type != ObjectType_CompileTimeFunction)
 				continue;
 
-			if (requiredDefinition->compileTimeHeaderName.empty())
+			if (dynamicStringIsEmpty(requiredDefinition->compileTimeHeaderName))
 			{
 				ErrorAtToken(*referenceStatus.name,
 				             "could not find generated header for referenced compile-time "
@@ -1151,14 +1151,14 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 
 			addStringOutput(autoIncludes.source, "#include", StringOutMod_SpaceAfter,
 			                referenceStatus.name);
-			addStringOutput(autoIncludes.source, requiredDefinition->compileTimeHeaderName.c_str(),
+			addStringOutput(autoIncludes.source, dynamicStringToCStr(requiredDefinition->compileTimeHeaderName),
 			                StringOutMod_SurroundWithQuotes, referenceStatus.name);
 			addLangTokenOutput(autoIncludes.source, StringOutMod_NewlineAfter,
 			                   referenceStatus.name);
 
 			if (environment.isMsvcCompiler)
 			{
-				if (requiredDefinition->compileTimeImportLibraryName.empty())
+				if (dynamicStringIsEmpty(requiredDefinition->compileTimeImportLibraryName))
 				{
 					ErrorAtToken(*referenceStatus.name,
 					             "could not find import library name for referenced compile-time "
@@ -1204,17 +1204,17 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		// features used (e.g. their signatures have std::vector<>)
 		char sourceOutputName[MAX_PATH_LENGTH] = {0};
 		PrintfBuffer(sourceOutputName, "%s/%s.cpp", cakelispWorkingDir,
-		             buildObject.artifactsName.c_str());
+		             dynamicStringToCStr(buildObject.artifactsName));
 		buildObject.sourceOutputName = sourceOutputName;
 
 		char buildObjectName[MAX_PATH_LENGTH] = {0};
 		PrintfBuffer(buildObjectName, "%s/%s.%s", cakelispWorkingDir,
-		             buildObject.artifactsName.c_str(), compilerObjectExtension);
+		             dynamicStringToCStr(buildObject.artifactsName), compilerObjectExtension);
 		buildObject.buildObjectName = buildObjectName;
 
 		char dynamicLibraryOut[MAX_PATH_LENGTH] = {0};
 		PrintfBuffer(dynamicLibraryOut, "%s/%s%s.%s", cakelispWorkingDir,
-		             linkerDynamicLibraryPrefix, buildObject.artifactsName.c_str(),
+		             linkerDynamicLibraryPrefix, dynamicStringToCStr(buildObject.artifactsName),
 		             linkerDynamicLibraryExtension);
 		buildObject.dynamicLibraryPath = dynamicLibraryOut;
 
@@ -1222,22 +1222,22 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		if (environment.isMsvcCompiler && definition->type == ObjectType_CompileTimeFunction)
 		{
 			char importLibraryName[MAX_PATH_LENGTH] = {0};
-			PrintfBuffer(importLibraryName, "%s.%s", buildObject.artifactsName.c_str(),
+			PrintfBuffer(importLibraryName, "%s.%s", dynamicStringToCStr(buildObject.artifactsName),
 			             compilerImportLibraryExtension);
 			definition->compileTimeImportLibraryName = importLibraryName;
 		}
 
 		char headerInclude[MAX_PATH_LENGTH] = {0};
 		makeIncludeArgument(headerInclude, sizeof(headerInclude),
-		                    environment.cakelispSrcDir.c_str());
+		                    dynamicStringToCStr(environment.cakelispSrcDir));
 
 		char buildObjectArgument[MAX_PATH_LENGTH] = {0};
 		makeObjectOutputArgument(buildObjectArgument, sizeof(buildObjectArgument),
-		                         buildObject.buildObjectName.c_str());
+		                         dynamicStringToCStr(buildObject.buildObjectName));
 
 		char debugSymbolsName[MAX_PATH_LENGTH] = {0};
 		PrintfBuffer(debugSymbolsName, "%s/%s.%s", cakelispWorkingDir,
-		             buildObject.artifactsName.c_str(), compilerDebugSymbolsExtension);
+		             dynamicStringToCStr(buildObject.artifactsName), compilerDebugSymbolsExtension);
 		char debugSymbolsArgument[MAX_PATH_LENGTH] = {0};
 		makeDebugSymbolsOutputArgument(debugSymbolsArgument, sizeof(debugSymbolsArgument),
 		                               debugSymbolsName);
@@ -1268,11 +1268,11 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 				// modification, comptime code can end up calling stale functions/initializing
 				// incorrect types
 				headerSearchDirectories.push_back(
-				    environment.cakelispSrcDir.empty() ? "src" : environment.cakelispSrcDir);
+				    dynamicStringIsEmpty(environment.cakelispSrcDir) ? "src" : environment.cakelispSrcDir);
 			}
 
 			if (!cppFileNeedsBuild(
-			        environment, sourceOutputName, buildObject.dynamicLibraryPath.c_str(),
+			        environment, sourceOutputName, dynamicStringToCStr(buildObject.dynamicLibraryPath),
 			        buildArguments, environment.comptimeCachedCommandCrcs,
 			        environment.comptimeNewCommandCrcs, environment.comptimeHeaderModifiedCache,
 			        headerSearchDirectories))
@@ -1299,7 +1299,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		{
 			// TODO: Abort building if cannot invoke compiler?
 			free(buildArguments);
-			environment.comptimeNewCommandCrcs.erase(buildObject.dynamicLibraryPath.c_str());
+			environment.comptimeNewCommandCrcs.erase(dynamicStringToCStr(buildObject.dynamicLibraryPath));
 			continue;
 		}
 
@@ -1328,11 +1328,11 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 
 		if (buildObject.status != 0)
 		{
-			environment.comptimeNewCommandCrcs.erase(buildObject.dynamicLibraryPath.c_str());
+			environment.comptimeNewCommandCrcs.erase(dynamicStringToCStr(buildObject.dynamicLibraryPath));
 
 			ErrorAtTokenf(*buildObject.definition->definitionInvocation,
 			              "failed to compile definition '%s' with status %d",
-			              buildObject.definition->name.c_str(), buildObject.status);
+			              dynamicStringToCStr(buildObject.definition->name), buildObject.status);
 
 			// Special case: If the definition has no references, prevent it from ever having a
 			// chance to fail again, because there's nothing we can do if it fails
@@ -1350,7 +1350,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		buildObject.stage = BuildStage_Linking;
 
 		if (logging.buildProcess)
-			Logf("Compiled %s successfully\n", buildObject.definition->name.c_str());
+			Logf("Compiled %s successfully\n", dynamicStringToCStr(buildObject.definition->name));
 
 		DynamicStringArray importLibraryPaths;
 		DynamicStringArray importLibraries;
@@ -1365,7 +1365,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 				              "cannot link definition '%s' because cakelisp-lib-dir is not set. "
 				              "Set it with e.g.:\n"
 				              "\t(set-cakelisp-option cakelisp-lib-dir \"Dependencies/cakelisp/bin\")",
-				              buildObject.definition->name.c_str());
+				              dynamicStringToCStr(buildObject.definition->name));
 				++numErrorsOut;
 				return 0;
 			}
@@ -1379,22 +1379,22 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		    {&importLibraryPaths, {}, &importLibraryPathsArgs, makeImportLibraryPathArgument},
 		    {&importLibraries, {}, &importLibrariesArgs, nullptr}};
 		convertBuildArguments(convertedArguments, ArraySize(convertedArguments),
-		                      environment.compileTimeLinkCommand.fileToExecute.c_str());
+		                      dynamicStringToCStr(environment.compileTimeLinkCommand.fileToExecute));
 
 		char dynamicLibraryOutArgument[MAX_PATH_LENGTH] = {0};
 		makeDynamicLibraryOutputArgument(dynamicLibraryOutArgument,
 		                                 sizeof(dynamicLibraryOutArgument),
-		                                 buildObject.dynamicLibraryPath.c_str(),
-		                                 environment.compileTimeLinkCommand.fileToExecute.c_str());
+		                                 dynamicStringToCStr(buildObject.dynamicLibraryPath),
+		                                 dynamicStringToCStr(environment.compileTimeLinkCommand.fileToExecute));
 
 		char compileTimeLinkExecutable[MAX_PATH_LENGTH] = {0};
-		if (!resolveExecutablePath(environment.compileTimeLinkCommand.fileToExecute.c_str(),
+		if (!resolveExecutablePath(dynamicStringToCStr(environment.compileTimeLinkCommand.fileToExecute),
 		                           compileTimeLinkExecutable, sizeof(compileTimeLinkExecutable)))
 			continue;
 
 		ProcessCommandInput linkTimeInputs[] = {
 		    {ProcessCommandArgumentType_DynamicLibraryOutput, {dynamicLibraryOutArgument}},
-		    {ProcessCommandArgumentType_ObjectInput, {buildObject.buildObjectName.c_str()}},
+		    {ProcessCommandArgumentType_ObjectInput, {dynamicStringToCStr(buildObject.buildObjectName)}},
 		    {ProcessCommandArgumentType_ImportLibraryPaths, importLibraryPathsArgs},
 		    {ProcessCommandArgumentType_ImportLibraries, importLibrariesArgs}};
 		const char** linkArgumentList = MakeProcessArgumentsFromCommand(
@@ -1437,12 +1437,12 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		buildObject.stage = BuildStage_Loading;
 
 		if (logging.buildProcess)
-			Logf("Linked %s successfully\n", buildObject.definition->name.c_str());
+			Logf("Linked %s successfully\n", dynamicStringToCStr(buildObject.definition->name));
 
-		setSourceArtifactCrc(environment, buildObject.sourceOutputName.c_str(),
-		                     buildObject.dynamicLibraryPath.c_str());
+		setSourceArtifactCrc(environment, dynamicStringToCStr(buildObject.sourceOutputName),
+		                     dynamicStringToCStr(buildObject.dynamicLibraryPath));
 
-		DynamicLibHandle builtLib = loadDynamicLibrary(buildObject.dynamicLibraryPath.c_str());
+		DynamicLibHandle builtLib = loadDynamicLibrary(dynamicStringToCStr(buildObject.dynamicLibraryPath));
 		if (!builtLib)
 		{
 			ErrorAtToken(*buildObject.definition->definitionInvocation,
@@ -1456,7 +1456,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		NameStyleSettings nameSettings;
 		char symbolNameBuffer[MAX_NAME_LENGTH] = {0};
 		lispNameStyleToCNameStyle(
-		    nameSettings.functionNameMode, buildObject.definition->name.c_str(), symbolNameBuffer,
+		    nameSettings.functionNameMode, dynamicStringToCStr(buildObject.definition->name), symbolNameBuffer,
 		    sizeof(symbolNameBuffer), *buildObject.definition->definitionInvocation);
 		void* compileTimeFunction = getSymbolFromDynamicLibrary(builtLib, symbolNameBuffer);
 		if (!compileTimeFunction)
@@ -1471,19 +1471,19 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		switch (buildObject.definition->type)
 		{
 			case ObjectType_CompileTimeMacro:
-				if (findMacro(environment, buildObject.definition->name.c_str()))
+				if (findMacro(environment, dynamicStringToCStr(buildObject.definition->name)))
 					NoteAtToken(*buildObject.definition->definitionInvocation, "redefined macro");
 				environment.macros[buildObject.definition->name] = (MacroFunc)compileTimeFunction;
 				break;
 			case ObjectType_CompileTimeGenerator:
-				if (findGenerator(environment, buildObject.definition->name.c_str()))
+				if (findGenerator(environment, dynamicStringToCStr(buildObject.definition->name)))
 					NoteAtToken(*buildObject.definition->definitionInvocation,
 					            "redefined generator");
 				environment.generators[buildObject.definition->name] =
 				    (GeneratorFunc)compileTimeFunction;
 				break;
 			case ObjectType_CompileTimeFunction:
-				if (findCompileTimeFunction(environment, buildObject.definition->name.c_str()))
+				if (findCompileTimeFunction(environment, dynamicStringToCStr(buildObject.definition->name)))
 					NoteAtToken(*buildObject.definition->definitionInvocation,
 					            "redefined function");
 				environment.compileTimeFunctions[buildObject.definition->name] =
@@ -1503,7 +1503,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		// aren't necessarily referenced by the user's code (e.g. comptime var destructors)
 		int numErrorsOutBefore = numErrorsOut;
 		numReferencesResolved += ReevaluateResolveReferences(
-		    environment, buildObject.definition->name.c_str(),
+		    environment, dynamicStringToCStr(buildObject.definition->name),
 		    /*warnIfNoReferences=*/!buildObject.definition->environmentRequired, numErrorsOut);
 
 		// This definition had errors, don't consider it finished
@@ -1520,7 +1520,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 
 		if (logging.buildProcess)
 			Logf("Successfully built, loaded, and executed %s\n",
-			     buildObject.definition->name.c_str());
+			     dynamicStringToCStr(buildObject.definition->name));
 	}
 
 	return numReferencesResolved;
@@ -1561,7 +1561,7 @@ bool BuildEvaluateReferences(EvaluatorEnvironment& environment, int& numErrorsOu
 	for (ObjectDefinition* definitionPointer : definitionsToCheck)
 	{
 		ObjectDefinition& definition = *definitionPointer;
-		const char* defName = definition.name.c_str();
+		const char* defName = dynamicStringToCStr(definition.name);
 
 		if (logging.compileTimeBuildReasons)
 			Logf("Checking to build %s\n", defName);
@@ -1624,7 +1624,7 @@ bool BuildEvaluateReferences(EvaluatorEnvironment& environment, int& numErrorsOu
 							// guess
 							if (logging.compileTimeBuildReasons)
 								Logf("\tCannot build until %s is loaded\n",
-								     referenceStatus.name->contents.c_str());
+								     dynamicStringToCStr(referenceStatus.name->contents));
 
 							referenceStatus.guessState = GuessState_WaitingForLoad;
 							canBuild = false;
@@ -1660,7 +1660,7 @@ bool BuildEvaluateReferences(EvaluatorEnvironment& environment, int& numErrorsOu
 					{
 						if (logging.compileTimeBuildReasons)
 							Logf("\tCannot build until %s is guessed. Guessing now\n",
-							     referenceStatus.name->contents.c_str());
+							     dynamicStringToCStr(referenceStatus.name->contents));
 
 						// Find all the times the definition makes this reference
 						// We must use indices because the call to FunctionInvocationGenerator can
@@ -1719,7 +1719,7 @@ bool BuildEvaluateReferences(EvaluatorEnvironment& environment, int& numErrorsOu
 
 			for (ComptimeBuildObject& buildObject : definitionsToBuild)
 			{
-				Logf("\t%s\n", buildObject.definition->name.c_str());
+				Logf("\t%s\n", dynamicStringToCStr(buildObject.definition->name));
 			}
 		}
 
@@ -1745,11 +1745,11 @@ bool EvaluateResolveReferences(EvaluatorEnvironment& environment)
 		for (ObjectDefinitionPair& definitionPair : environment.definitions)
 		{
 			ObjectDefinition& definition = definitionPair.second;
-			Logf("%s %s:\n", objectTypeToString(definition.type), definition.name.c_str());
+			Logf("%s %s:\n", objectTypeToString(definition.type), dynamicStringToCStr(definition.name));
 			for (ObjectReferenceStatusPair& reference : definition.references)
 			{
 				ObjectReferenceStatus& referenceStatus = reference.second;
-				Logf("\t%s\n", referenceStatus.name->contents.c_str());
+				Logf("\t%s\n", dynamicStringToCStr(referenceStatus.name->contents));
 			}
 		}
 	}
@@ -1871,7 +1871,7 @@ bool EvaluateResolveReferences(EvaluatorEnvironment& environment)
 				if (logging.buildProcess && !missingDefinitions.empty())
 				{
 					ErrorAtTokenf(*definition.definitionInvocation, "failed to generate %s",
-					              definition.name.c_str());
+					              dynamicStringToCStr(definition.name));
 					for (const Token* missingDefinition : missingDefinitions)
 						NoteAtToken(*missingDefinition,
 						            "missing compile-time function defined here");
@@ -1883,7 +1883,7 @@ bool EvaluateResolveReferences(EvaluatorEnvironment& environment)
 			if (logging.buildOmissions && isCompileTimeObject(definition.type))
 				NoteAtTokenf(*definition.definitionInvocation,
 				             "did not build %s (not required by any module)",
-				             definition.name.c_str());
+				             dynamicStringToCStr(definition.name));
 		}
 	}
 
@@ -1916,11 +1916,11 @@ void environmentDestroyInvalidateTokens(EvaluatorEnvironment& environment)
 	{
 		const DynamicString& destroyFuncName =
 		    compileTimeVariablePair.second.destroyCompileTimeFuncName;
-		if (!destroyFuncName.empty())
+		if (!dynamicStringIsEmpty(destroyFuncName))
 		{
 			// Search for the compile-time function. It needs to have been required in order to be
 			// built and loaded already
-			void* destroyFunc = findCompileTimeFunction(environment, destroyFuncName.c_str());
+			void* destroyFunc = findCompileTimeFunction(environment, dynamicStringToCStr(destroyFuncName));
 			if (destroyFunc)
 			{
 				static TokenArray expectedSignature;
@@ -1937,7 +1937,7 @@ void environmentDestroyInvalidateTokens(EvaluatorEnvironment& environment)
 				}
 
 				ObjectDefinition* destroyFuncDefinition =
-				    findObjectDefinition(environment, destroyFuncName.c_str());
+				    findObjectDefinition(environment, dynamicStringToCStr(destroyFuncName));
 				if (!destroyFuncDefinition)
 				{
 					Log("error: could not find compile-time variable destroy function to verify "
@@ -1950,7 +1950,7 @@ void environmentDestroyInvalidateTokens(EvaluatorEnvironment& environment)
 				const Token* startSignatureToken = destroyFuncDefinition->definitionInvocation + 3;
 
 				if (!CompileTimeFunctionSignatureMatches(environment, *startSignatureToken,
-				                                         destroyFuncName.c_str(),
+				                                         dynamicStringToCStr(destroyFuncName),
 				                                         expectedSignature))
 				{
 					continue;
@@ -1964,7 +1964,7 @@ void environmentDestroyInvalidateTokens(EvaluatorEnvironment& environment)
 				    "error: destruction function '%s' for compile-time variable '%s' was not "
 				    "loaded before the environment started destruction. Was it ever defined, or "
 				    "defined but not required? Memory will leak\n",
-				    destroyFuncName.c_str(), compileTimeVariablePair.first.c_str());
+				    dynamicStringToCStr(destroyFuncName), dynamicStringToCStr(compileTimeVariablePair.first));
 			}
 		}
 		else
@@ -2184,7 +2184,7 @@ bool searchForFileInPaths(const char* shortPath, const char* encounteredInFile,
 
 	for (const DynamicString& path : searchPaths)
 	{
-		SafeSnprintf(foundFilePathOut, foundFilePathOutSize, "%s/%s", path.c_str(), shortPath);
+		SafeSnprintf(foundFilePathOut, foundFilePathOutSize, "%s/%s", dynamicStringToCStr(path), shortPath);
 
 		if (logging.fileSearch)
 			Logf("File exists? %s (", foundFilePathOut);
@@ -2218,7 +2218,7 @@ bool searchForFileInPathsWithError(const char* shortPath, const char* encountere
 		Log("Checked search paths:\n");
 		for (const DynamicString& path : searchPaths)
 		{
-			Logf("\t%s\n", path.c_str());
+			Logf("\t%s\n", dynamicStringToCStr(path));
 		}
 		return false;
 	}
@@ -2340,7 +2340,7 @@ bool StringOutputHasAnyMeaningfulOutput(const StringOutputArray* stringOutput,
 		}
 		else if (output.modifiers & (StringOutMod_NewlineAfter | StringOutMod_SpaceAfter |
 		                             StringOutMod_SpaceBefore | StringOutMod_None) &&
-		         output.output.empty())
+		         dynamicStringIsEmpty(output.output))
 		{
 			// Not actually meaningful output
 		}
