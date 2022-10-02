@@ -30,7 +30,7 @@ typedef pid_t ProcessId;
 typedef int ProcessId;
 #endif
 
-struct Subprocess
+typedef struct Subprocess
 {
 	int* statusOut;
 #if defined(UNIX) || defined(MACOS)
@@ -42,7 +42,7 @@ struct Subprocess
 	HANDLE hChildStd_OUT_Rd;
 #endif
 	DynamicString command;
-};
+} Subprocess;
 
 static std::vector<Subprocess> s_subprocesses;
 

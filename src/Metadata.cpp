@@ -5,7 +5,7 @@
 #include "Generators.hpp"
 #include "Utilities.hpp"
 
-enum LanguageRequirement
+typedef enum LanguageRequirement
 {
 	// Cakelisp's Evaluator will handle the invocation without generating any C/C++ code
 	LanguageRequirement_Evaluated,
@@ -15,17 +15,17 @@ enum LanguageRequirement
 
 	// Only features which only work in C++ and do not work in C
 	LanguageRequirement_Cpp,
-};
+} LanguageRequirement;
 
-enum EvaluationTime
+typedef enum EvaluationTime
 {
 	EvaluationTime_EvaluatedImmediately = 1 << 0,
 	EvaluationTime_CompileTime = 1 << 1,
 	EvaluationTime_Runtime = 1 << 2,
 	EvaluationTime_EvaluatedOnImport = 1 << 3,
-};
+} EvaluationTime;
 
-enum GeneratorCategory
+typedef enum GeneratorCategory
 {
 	GeneratorCategory_Uncategorized,
 	GeneratorCategory_Math,
@@ -36,9 +36,9 @@ enum GeneratorCategory
 	GeneratorCategory_Memory,
 	GeneratorCategory_Definitions,
 	GeneratorCategory_CodeGeneration,
-};
+} GeneratorCategory;
 
-struct GeneratorMetadata
+typedef struct GeneratorMetadata
 {
 	const char* generatorName;
 	GeneratorCategory category;
@@ -47,7 +47,7 @@ struct GeneratorMetadata
 	int minimumArguments;
 	int maximumArguments;
 	const char* description;
-};
+} GeneratorMetadata;
 
 const int MaxArgumentsUnlimited = 99;
 

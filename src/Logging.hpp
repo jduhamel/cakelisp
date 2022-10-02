@@ -2,7 +2,7 @@
 
 #include "Exporting.hpp"
 
-struct LoggingSettings
+typedef struct LoggingSettings
 {
 	// verbosity
 	bool tokenization;
@@ -31,6 +31,6 @@ struct LoggingSettings
 	bool includeScanning;
 	bool strictIncludes;
 	bool optionAdding;
-};
+} LoggingSettings;
 
 extern CAKELISP_API LoggingSettings logging;

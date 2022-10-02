@@ -16,7 +16,7 @@ extern const char* linkerDynamicLibraryExtension;
 extern const char* defaultExecutableName;
 extern const char* precompiledHeaderExtension;
 
-struct BuildArgumentConverter
+typedef struct BuildArgumentConverter
 {
 	DynamicStringArray* stringsIn;
 
@@ -25,7 +25,7 @@ struct BuildArgumentConverter
 	CStringArray* argumentsOut;
 	void (*argumentConversionFunc)(char* buffer, int bufferSize, const char* stringIn,
 	                               const char* executableName);
-};
+} BuildArgumentConverter;
 
 void convertBuildArguments(BuildArgumentConverter* argumentsToConvert, int numArgumentsToConvert,
                            const char* buildExecutable);
@@ -67,13 +67,13 @@ CAKELISP_API void makeTargetPlatformVersionArgument(char* resolvedArgumentOut,
 
 typedef std::unordered_map<DynamicString, FileModifyTime> HeaderModificationTimeTable;
 
-struct CrcWithFlags
+typedef struct CrcWithFlags
 {
 	uint32_t crc;
 	// Track whether we actually changed the state of whatever the CRC is pointing to, as opposed to
 	// just loaded it and saved it back out
 	bool wasModified;
-};
+} CrcWithFlags;
 
 // If an existing cached build was run, check the current build's commands against the previous
 // commands via CRC comparison. This ensures changing commands will cause rebuilds

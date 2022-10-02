@@ -18,12 +18,12 @@
 #include "FindVisualStudio.hpp"
 #endif
 
-struct CommandLineOption
+typedef struct CommandLineOption
 {
 	const char* handle;
 	bool* toggleOnOut;
 	const char* help;
-};
+} CommandLineOption;
 
 void printHelp(const CommandLineOption* options, int numOptions)
 {

@@ -201,12 +201,12 @@ bool SetCakelispOption(EvaluatorEnvironment& environment, const EvaluatorContext
 		return true;
 	}
 
-	struct ProcessCommandOptions
+	typedef struct ProcessCommandOptions
 	{
 		const char* optionName;
 		ProcessCommand* command;
 		ProcessCommandOptionFunc handler;
-	};
+	} ProcessCommandOptions;
 	ProcessCommandOptions commandOptions[] = {
 	    {"compile-time-compiler", &environment.compileTimeBuildCommand,
 	     SetProcessCommandFileToExec},
@@ -266,12 +266,12 @@ bool SetModuleOption(EvaluatorEnvironment& environment, const EvaluatorContext& 
 		return false;
 
 	// TODO: Copy-pasted
-	struct ProcessCommandOptions
+	typedef struct ProcessCommandOptions
 	{
 		const char* optionName;
 		ProcessCommand* command;
 		ProcessCommandOptionFunc handler;
-	};
+	} ProcessCommandOptions;
 	ProcessCommandOptions commandOptions[] = {
 	    // TODO: Use module overrides
 	    // {"compile-time-compiler", &context.module->compileTimeBuildCommand,
@@ -454,11 +454,11 @@ bool AddStringOptionsGenerator(EvaluatorEnvironment& environment, const Evaluato
 
 	const Token& invocationToken = tokens[startTokenIndex + 1];
 
-	struct StringOptionList
+	typedef struct StringOptionList
 	{
 		const char* name;
 		DynamicStringArray* stringList;
-	};
+	} StringOptionList;
 	const StringOptionList possibleDestinations[] = {
 	    {"add-cakelisp-search-directory", &environment.searchPaths},
 	    {"add-c-search-directory-global", &environment.cSearchDirectories},
@@ -631,7 +631,7 @@ bool RenameBuiltinGenerator(EvaluatorEnvironment& environment, const EvaluatorCo
 	return true;
 }
 
-enum ImportState
+typedef enum ImportState
 {
 	WithDefinitions,
 	WithDeclarations,
@@ -639,7 +639,7 @@ enum ImportState
 	DeclarationsOnly,
 	// TODO: Remove?
 	DefinitionsOnly
-};
+} ImportState;
 
 bool ImportGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& context,
                      const TokenArray& tokens, int startTokenIndex, GeneratorOutput& output)
@@ -1409,14 +1409,14 @@ bool ArrayAccessGenerator(EvaluatorEnvironment& environment, const EvaluatorCont
 	return true;
 }
 
-enum ComptimeTokenArgContainedType
+typedef enum ComptimeTokenArgContainedType
 {
 	ExpectTokenType_Unrecognized,
 	ExpectTokenType_Any,
 	ExpectTokenType_String,
 	ExpectTokenType_Symbol,
 	ExpectTokenType_Array,  // A list in lisp, but in Cakelisp, there are no linked lists
-};
+} ComptimeTokenArgContainedType;
 static ComptimeTokenArgContainedType ComptimeParseTokenArgumentType(const Token& expectedType)
 {
 	ComptimeTokenArgContainedType type = ExpectTokenType_Unrecognized;
@@ -1476,17 +1476,17 @@ static bool ComptimeGenerateTokenArguments(const TokenArray& tokens, int startAr
 	                "startTokenIndex);",
 	                StringOutMod_NewlineAfter, &tokens[startArgsIndex]);
 
-	enum ArgReadState
+	typedef enum ArgReadState
 	{
 		Name,
 		Type
-	};
+	} ArgReadState;
 	ArgReadState state = Name;
 
-	struct TokenArgument
+	typedef struct TokenArgument
 	{
 		const Token* name;
-	};
+	} TokenArgument;
 
 	TokenArgument argument = {0};
 	bool isOptional = false;
@@ -1529,13 +1529,13 @@ static bool ComptimeGenerateTokenArguments(const TokenArray& tokens, int startAr
 		}
 		else if (state == Type)
 		{
-			enum TokenBindType
+			typedef enum TokenBindType
 			{
 				ArgumentIndex,
 				Index,
 				Pointer,
 				Reference,
-			};
+			} TokenBindType;
 
 			TokenBindType bindType = Pointer;
 			ComptimeTokenArgContainedType containedType = ExpectTokenType_Unrecognized;
@@ -3289,11 +3289,11 @@ void importFundamentalGenerators(EvaluatorEnvironment& environment)
 		environment.generators[cStatementKeywords[i]] = CStatementGenerator;
 	}
 
-	struct DeprecatedData
+	typedef struct DeprecatedData
 	{
 		const char* keyword;
 		const char* replacementPrompt;
-	};
+	} DeprecatedData;
 	static const DeprecatedData deprecatedGenerators[] = {
 	    {"block", "use (scope) instead"},
 	    {"nth", "use (at) instead"},

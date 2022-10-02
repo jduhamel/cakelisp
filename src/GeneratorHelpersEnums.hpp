@@ -1,6 +1,6 @@
 #pragma once
 
-enum CStatementOperationType
+typedef enum CStatementOperationType
 {
 	// Insert keywordOrSymbol between each thing
 	Splice,
@@ -45,11 +45,11 @@ enum CStatementOperationType
 	// invocations which open scopes in order to provide multiple statements in a single Statement.
 	// Statements are in Body scope
 	Statement,
-};
+} CStatementOperationType;
 
-enum TokenizePushSpliceArgumentType
+typedef enum TokenizePushSpliceArgumentType
 {
 	TokenizePushSpliceArgument_Array,
 	TokenizePushSpliceArgument_AllExpressions,
 	TokenizePushSpliceArgument_Expression
-};
+} TokenizePushSpliceArgumentType;

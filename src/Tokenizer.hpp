@@ -8,7 +8,7 @@
 
 const char* tokenTypeToString(TokenType type);
 
-struct Token
+typedef struct Token
 {
 	TokenType type;
 	// Only non-empty if type is ambiguous
@@ -23,7 +23,7 @@ struct Token
 	int columnStart;
 	// Exclusive, e.g. line with "(a" would have start 0 end 1, the 'a' would have start 1 end 2
 	int columnEnd;
-};
+} Token;
 
 typedef std::vector<Token> TokenArray;
 

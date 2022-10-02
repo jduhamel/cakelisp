@@ -17,10 +17,10 @@
 #error Platform support is needed for dynamic loading
 #endif
 
-struct DynamicLibrary
+typedef struct DynamicLibrary
 {
 	DynamicLibHandle handle;
-};
+} DynamicLibrary;
 
 typedef std::unordered_map<DynamicString, DynamicLibrary> DynamicLibraryMap;
 static DynamicLibraryMap dynamicLibraries;

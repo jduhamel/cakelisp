@@ -11,16 +11,16 @@ struct NameStyleSettings;
 struct StringOutput;
 struct GeneratorOutput;
 
-struct WriterFormatSettings
+typedef struct WriterFormatSettings
 {
 	// Don't use newlines or spaces/tabs. Overrides other options
 	bool uglyPrint = false;
 	WriterFormatBraceStyle braceStyle = WriterFormatBraceStyle_Allman;
 	WriterFormatIndentType indentStyle = WriterFormatIndentType_Tabs;
 	int indentTabWidth = 4;
-};
+} WriterFormatSettings;
 
-struct WriterOutputSettings
+typedef struct WriterOutputSettings
 {
 	const char* sourceCakelispFilename;
 
@@ -32,7 +32,7 @@ struct WriterOutputSettings
 	// Note that these cover both the source and header heading and footer
 	const GeneratorOutput* heading;
 	const GeneratorOutput* footer;
-};
+} WriterOutputSettings;
 
 const char* importLanguageToString(ImportLanguage type);
 

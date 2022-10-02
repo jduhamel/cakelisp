@@ -480,12 +480,12 @@ bool parseFunctionSignature(const TokenArray& tokens, int argsIndex,
                             FunctionArgumentTokensArray& arguments, int& returnTypeStart,
                             int& isVariadicIndex)
 {
-	enum DefunState
+	typedef enum DefunState
 	{
 		Name,
 		Type,
 		ReturnType
-	};
+	} DefunState;
 
 	DefunState state = Name;
 	FunctionArgumentTokens currentArgument = {};

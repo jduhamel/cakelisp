@@ -7,13 +7,13 @@
 #include "Exporting.hpp"
 #include "RunProcessEnums.hpp"
 
-struct RunProcessArguments
+typedef struct RunProcessArguments
 {
 	const char* fileToExecute;
 	// nullptr = no change (use parent process's working dir)
 	const char* workingDirectory;
 	const char** arguments;
-};
+} RunProcessArguments;
 
 CAKELISP_API int runProcess(const RunProcessArguments& arguments, int* statusOut);
 
@@ -25,23 +25,23 @@ CAKELISP_API void waitForAllProcessesClosed(SubprocessOnOutputFunc onOutput);
 // Helpers for programmatically constructing arguments
 //
 
-struct ProcessCommandArgument
+typedef struct ProcessCommandArgument
 {
 	ProcessCommandArgumentType type;
 	DynamicString contents;
-};
+} ProcessCommandArgument;
 
-struct ProcessCommand
+typedef struct ProcessCommand
 {
 	DynamicString fileToExecute;
 	std::vector<ProcessCommandArgument> arguments;
-};
+} ProcessCommand;
 
-struct ProcessCommandInput
+typedef struct ProcessCommandInput
 {
 	ProcessCommandArgumentType type;
 	CStringArray value;
-};
+} ProcessCommandInput;
 
 void PrintProcessArguments(const char** processArguments);
 

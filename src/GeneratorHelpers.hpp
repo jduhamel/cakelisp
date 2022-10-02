@@ -18,26 +18,26 @@ struct ObjectDefinition;
 typedef std::vector<Token> TokenArray;
 typedef std::vector<StringOutput> StringOutputArray;
 
-struct FunctionArgumentTokens
+typedef struct FunctionArgumentTokens
 {
 	int startTypeIndex;
 	int nameIndex;
-};
+} FunctionArgumentTokens;
 typedef std::vector<FunctionArgumentTokens> FunctionArgumentTokensArray;
 
-struct TokenizePushSpliceArgument
+typedef struct TokenizePushSpliceArgument
 {
 	TokenizePushSpliceArgumentType type;
 	const Token* startToken;
 	const TokenArray* sourceTokens;
-};
+} TokenizePushSpliceArgument;
 
 typedef std::vector<TokenizePushSpliceArgument> TokenizePushSpliceArgumentArray;
 
-struct TokenizePushContext
+typedef struct TokenizePushContext
 {
 	TokenizePushSpliceArgumentArray spliceArguments;
-};
+} TokenizePushContext;
 
 void StripInvocation(int& startTokenIndex, int& endTokenIndex);
 CAKELISP_API int FindCloseParenTokenIndex(const TokenArray& tokens, int startTokenIndex);
@@ -156,14 +156,14 @@ bool CompileTimeFunctionSignatureMatches(EvaluatorEnvironment& environment, cons
                                          const TokenArray& expectedSignature);
 
 // An interface for building simple generators
-struct CStatementOperation
+typedef struct CStatementOperation
 {
 	CStatementOperationType type;
 	const char* keywordOrSymbol;
 	// 0 = operation name
 	// 1 = first argument to operation (etc.)
 	int argumentIndex;
-};
+} CStatementOperation;
 
 CAKELISP_API bool CStatementOutput(EvaluatorEnvironment& environment,
                                    const EvaluatorContext& context,

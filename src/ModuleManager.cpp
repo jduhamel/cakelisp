@@ -820,7 +820,7 @@ static void OnCompileProcessOutput(const char* output)
 	// TODO C/C++ error to Cakelisp token mapper
 }
 
-struct BuildObject
+typedef struct BuildObject
 {
 	int buildStatus;
 	DynamicString sourceFilename;
@@ -832,7 +832,7 @@ struct BuildObject
 
 	// Only used for include scanning
 	DynamicStringArray headerSearchDirectories;
-};
+} BuildObject;
 
 void buildObjectsFree(std::vector<BuildObject*>& objects)
 {
@@ -905,7 +905,7 @@ static void addStringIfUnique(DynamicStringArray& output, const char* stringToAd
 		output.push_back(stringToAdd);
 }
 
-struct SharedBuildOptions
+typedef struct SharedBuildOptions
 {
 	DynamicStringArray* cSearchDirectories;
 	ProcessCommand* buildCommand;
@@ -926,7 +926,7 @@ struct SharedBuildOptions
 	DynamicStringArray libraryRuntimeSearchDirs;
 	DynamicStringArray compilerLinkOptions;
 	DynamicStringArray toLinkerOptions;
-};
+} SharedBuildOptions;
 
 static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
                                            std::vector<BuildObject*>& buildObjects,

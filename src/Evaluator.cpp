@@ -749,7 +749,7 @@ static void OnCompileProcessOutput(const char* output)
 	// TODO C/C++ error to Cakelisp token mapper
 }
 
-enum BuildStage
+typedef enum BuildStage
 {
 	BuildStage_None,
 	BuildStage_Compiling,
@@ -757,12 +757,12 @@ enum BuildStage
 	BuildStage_Loading,
 	BuildStage_ResolvingReferences,
 	BuildStage_Finished
-};
+} BuildStage;
 
 // Note: environment.definitions can be resized/rehashed during evaluation, which invalidates
 // iterators. For now, I will rely on the fact that std::unordered_map does not invalidate
 // references on resize. This will need to change if the data structure changes
-struct ComptimeBuildObject
+typedef struct ComptimeBuildObject
 {
 	int buildId = -1;
 	int status = -1;
@@ -774,7 +774,7 @@ struct ComptimeBuildObject
 	DynamicString buildObjectName;
 	DynamicStringArray importLibraries;
 	ObjectDefinition* definition = nullptr;
-};
+} ComptimeBuildObject;
 
 static ObjectReferenceArray* GetReferenceListFromReference(EvaluatorEnvironment& environment,
                                                            const char* referenceToResolve)

@@ -8,7 +8,7 @@
 
 static const char commentCharacter = ';';
 
-enum TokenizeState
+typedef enum TokenizeState
 {
 	TokenizeState_Normal,
 	TokenizeState_Symbol,
@@ -17,7 +17,7 @@ enum TokenizeState
 	TokenizeState_StringContinue,
 	TokenizeState_InQuote,
 	TokenizeState_HereString,
-};
+} TokenizeState;
 
 int g_totalLinesTokenized = 0;
 

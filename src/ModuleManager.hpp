@@ -11,36 +11,36 @@
 #include "RunProcess.hpp"
 #include "Tokenizer.hpp"
 
-struct ModuleDependency
+typedef struct ModuleDependency
 {
 	ModuleDependencyType type;
 	DynamicString name;
 	const Token* blameToken;
-};
+} ModuleDependency;
 
 // Always update both of these. Signature helps validate call
 extern const char* g_modulePreBuildHookSignature;
 typedef bool (*ModulePreBuildHook)(ModuleManager& manager, Module* module);
 
-struct ModuleExportScope
+typedef struct ModuleExportScope
 {
 	const TokenArray* tokens;
 	int startTokenIndex; // Start of (export) invocation, not eval statements (for easier errors)
 
 	// Prevent double-evaluation
 	std::unordered_map<DynamicString, int> modulesEvaluatedExport;
-};
+} ModuleExportScope;
 
-struct CakelispDeferredImport
+typedef struct CakelispDeferredImport
 {
 	const Token* fileToImportToken;
 	CakelispImportOutput outputTo;
 	GeneratorOutput* spliceOutput;
 	Module* importedModule;
-};
+} CakelispDeferredImport;
 
 // A module is typically associated with a single file. Keywords like local mean in-module only
-struct Module
+typedef struct Module
 {
 	const char* filename;
 	const TokenArray* tokens;
@@ -90,9 +90,9 @@ struct Module
 	// ProcessCommand buildTimeLinkCommand;
 
 	CompileTimeHookArray preBuildHooks;
-};
+} Module;
 
-struct ModuleManager
+typedef struct ModuleManager
 {
 	// Shared environment across all modules
 	EvaluatorEnvironment environment;
@@ -111,7 +111,7 @@ struct ModuleManager
 	ArtifactCrcTable newCommandCrcs;
 
 	CAKELISP_API ~ModuleManager() = default;
-};
+} ModuleManager;
 
 CAKELISP_API void moduleManagerInitialize(ModuleManager& manager);
 // Do not close opened dynamic libraries. Should by called by sub-instances of cakelisp instead of

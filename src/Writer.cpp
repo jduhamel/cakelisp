@@ -134,13 +134,13 @@ static NameStyleMode getNameStyleModeForFlags(const NameStyleSettings& settings,
 	return mode;
 }
 
-enum WriterOutputScopeType
+typedef enum WriterOutputScopeType
 {
 	WriterOutputScope_Normal,
 	WriterOutputScope_ContinueBreakable,
-};
+} WriterOutputScopeType;
 
-struct WriterOutputScope
+typedef struct WriterOutputScope
 {
 	std::vector<const StringOutput*> onScopeExitOutputs;
 	WriterOutputScopeType type;
@@ -148,9 +148,9 @@ struct WriterOutputScope
 	// onScopeExitOutputs. We need to record this so we don't re-write them in the natural
 	// ScopeExit.
 	bool scopeHasBeenExitedExplicitly;
-};
+} WriterOutputScope;
 
-struct StringOutputState
+typedef struct StringOutputState
 {
 	int blockDepth;
 	// For determining character offsets to pass to e.g. Emacs' goto-char
@@ -160,7 +160,7 @@ struct StringOutputState
 	FILE* fileOut;
 
 	std::vector<WriterOutputScope> scopeStack;
-};
+} StringOutputState;
 
 static void Writer_Writef(StringOutputState& state, const char* format, ...)
 {

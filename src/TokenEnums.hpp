@@ -1,6 +1,6 @@
 #pragma once
 
-enum TokenType
+typedef enum TokenType
 {
 	TokenType_OpenParen,
 	TokenType_CloseParen,
@@ -16,4 +16,4 @@ enum TokenType
 	TokenType_StringMerge,
 	TokenType_StringContinue,
 	TokenType_HereString,
-};
+} TokenType;

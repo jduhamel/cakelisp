@@ -6,7 +6,7 @@
 
 struct Token;
 
-struct NameStyleSettings
+typedef struct NameStyleSettings
 {
 	// In general, you should write C/C++ types as they appear in C/C++, because then ETAGS etc. can
 	// still find the C++ definition without running our conversion functions. If you really don't
@@ -22,7 +22,7 @@ struct NameStyleSettings
 	NameStyleMode functionNameMode = NameStyleMode_CamelCase;
 	NameStyleMode argumentNameMode = NameStyleMode_CamelCase;
 	NameStyleMode variableNameMode = NameStyleMode_CamelCase;
-};
+} NameStyleSettings;
 
 // This only does anything to strings which have '-' as separators, or other symbols not allowed in
 // C names. It's safe to e.g. pass in valid C names because they cannot have lisp-allowed symbols in

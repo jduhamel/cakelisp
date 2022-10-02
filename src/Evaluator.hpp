@@ -22,7 +22,7 @@ typedef std::vector<Token> TokenArray;
 
 // Rather than needing to allocate and edit a buffer eventually equal to the size of the final
 // output, store output operations instead. This also facilitates source <-> generated mapping data
-struct StringOutput
+typedef struct StringOutput
 {
 	// TODO: Putting this in a union means we need to write a destructor which can detect when to
 	// destroy output
@@ -35,22 +35,22 @@ struct StringOutput
 
 	// Used to correlate Cakelisp code with generated output code
 	const Token* startToken;
-};
+} StringOutput;
 
 typedef std::vector<StringOutput> StringOutputArray;
 
-struct FunctionArgumentMetadata
+typedef struct FunctionArgumentMetadata
 {
 	DynamicString name;
 
 	const Token* typeStartToken;
 	// Unnecessary because we can just keep track of our parens, but included for convenience
 	const Token* typeEndToken;
-};
+} FunctionArgumentMetadata;
 
 typedef std::vector<FunctionArgumentMetadata> FunctionArgumentMetadataArray;
 
-struct FunctionMetadata
+typedef struct FunctionMetadata
 {
 	// The Cakelisp name, NOT the converted C name
 	DynamicString name;
@@ -61,30 +61,31 @@ struct FunctionMetadata
 	const Token* endDefinitionToken;
 
 	FunctionArgumentMetadataArray arguments;
-};
+} FunctionMetadata;
 
 const char* importLanguageToString(ImportLanguage type);
 
-struct ImportMetadata
+typedef struct ImportMetadata
 {
 	DynamicString importName;
 	ImportLanguage language;
 	const Token* triggerToken;
-};
+} ImportMetadata;
 
-struct GeneratorOutput
+typedef struct GeneratorOutput
 {
 	StringOutputArray source;
 	StringOutputArray header;
 
 	std::vector<FunctionMetadata> functions;
 	std::vector<ImportMetadata> imports;
-};
+} GeneratorOutput;
+
 // Add members to this as necessary
 void resetGeneratorOutput(GeneratorOutput& output);
 
 // This is frequently copied, so keep it small
-struct EvaluatorContext
+typedef struct EvaluatorContext
 {
 	EvaluatorScope scope;
 
@@ -99,7 +100,7 @@ struct EvaluatorContext
 	// Insert delimiterTemplate between each expression/statement. Only recognized in
 	// EvaluateGenerateAll_Recursive()
 	StringOutput delimiterTemplate;
-};
+} EvaluatorContext;
 
 struct EvaluatorEnvironment;
 
@@ -124,7 +125,7 @@ typedef GeneratorTable::iterator GeneratorIterator;
 typedef std::unordered_map<DynamicString, const Token*> GeneratorLastReferenceTable;
 typedef GeneratorLastReferenceTable::iterator GeneratorLastReferenceTableIterator;
 
-struct ObjectReference
+typedef struct ObjectReference
 {
 	const TokenArray* tokens;
 	int startIndex;
@@ -137,12 +138,12 @@ struct ObjectReference
 
 	// Not used in ObjectReferenceStatus, only ReferencePools
 	bool isResolved;
-};
+} ObjectReference;
 
 typedef std::vector<ObjectReference> ObjectReferenceArray;
 
 // TODO Need to add insertion points for later fixing
-struct ObjectReferenceStatus
+typedef struct ObjectReferenceStatus
 {
 	const Token* name;
 	// We need to guess and check because we don't know what C/C++ functions might be available. The
@@ -153,30 +154,30 @@ struct ObjectReferenceStatus
 	// In the case of multiple references to the same object in the same definition, keep track of
 	// all of them for guessing
 	ObjectReferenceArray references;
-};
+} ObjectReferenceStatus;
 
 typedef std::unordered_map<DynamicString, ObjectReferenceStatus> ObjectReferenceStatusMap;
 typedef std::pair<const DynamicString, ObjectReferenceStatus> ObjectReferenceStatusPair;
 
-struct MacroExpansion
+typedef struct MacroExpansion
 {
 	const Token* atToken;
 	const TokenArray* tokens;
-};
+} MacroExpansion;
 
 typedef std::vector<MacroExpansion> MacroExpansionArray;
 
 typedef std::unordered_map<uint32_t, const Token*> TokenizePushTokensMap;
 typedef std::pair<const uint32_t, const Token*> TokenizePushTokensPair;
 
-struct RequiredFeatureReason
+typedef struct RequiredFeatureReason
 {
 	const Token* blameToken;
 	RequiredFeature requiredFeatures;
-};
+} RequiredFeatureReason;
 typedef std::vector<RequiredFeatureReason> RequiredFeatureReasonList;
 
-struct ObjectDefinition
+typedef struct ObjectDefinition
 {
 	DynamicString name;
 	// The generator invocation that actually triggered the definition of this object
@@ -230,12 +231,12 @@ struct ObjectDefinition
 
 	RequiredFeature requiredFeatures;
 	RequiredFeatureReasonList requiredFeaturesReasons;
-};
+} ObjectDefinition;
 
-struct ObjectReferencePool
+typedef struct ObjectReferencePool
 {
 	ObjectReferenceArray references;
-};
+} ObjectReferencePool;
 
 // NOTE: See comment in BuildEvaluateReferences() before changing this data structure. The current
 // implementation assumes references to values will not be invalidated if the hash map changes
@@ -247,11 +248,11 @@ typedef std::pair<const DynamicString, ObjectReferencePool> ObjectReferencePoolP
 typedef std::unordered_map<DynamicString, void*> CompileTimeFunctionTable;
 typedef CompileTimeFunctionTable::iterator CompileTimeFunctionTableIterator;
 
-struct CompileTimeFunctionMetadata
+typedef struct CompileTimeFunctionMetadata
 {
 	const Token* nameToken;
 	const Token* startArgsToken;
-};
+} CompileTimeFunctionMetadata;
 
 typedef std::unordered_map<DynamicString, CompileTimeFunctionMetadata>
     CompileTimeFunctionMetadataTable;
@@ -264,7 +265,7 @@ typedef bool (*PreLinkHook)(ModuleManager& manager, ProcessCommand& linkCommand,
 extern const char* g_environmentPostReferencesResolvedHookSignature;
 typedef bool (*PostReferencesResolvedHook)(EvaluatorEnvironment& environment);
 
-struct CompileTimeHook
+typedef struct CompileTimeHook
 {
 	void* function;
 	// Sorted by greatest priority to least, priority 2 comes before 1, -1 comes after 0 and 1
@@ -274,14 +275,14 @@ struct CompileTimeHook
 	// encountered during reference resolution. Not predictable; any necessary priority should be
 	// explicit via userPriority
 	int environmentPriority;
-};
+} CompileTimeHook;
 
 typedef std::vector<CompileTimeHook> CompileTimeHookArray;
 
 // Update g_environmentCompileTimeVariableDestroySignature if you change this signature
 typedef void (*CompileTimeVariableDestroyFunc)(void* data);
 
-struct CompileTimeVariable
+typedef struct CompileTimeVariable
 {
 	// For runtime type checking
 	DynamicString type;
@@ -290,7 +291,7 @@ struct CompileTimeVariable
 	// (which is used if destroyCompileTimeFuncName is empty), but C++ types need to cast the
 	// pointer to the appropriate type to make sure destructor is called
 	DynamicString destroyCompileTimeFuncName;
-};
+} CompileTimeVariable;
 typedef std::unordered_map<DynamicString, CompileTimeVariable> CompileTimeVariableTable;
 typedef CompileTimeVariableTable::iterator CompileTimeVariableTableIterator;
 typedef std::pair<const DynamicString, CompileTimeVariable> CompileTimeVariableTablePair;
@@ -303,12 +304,12 @@ typedef std::unordered_map<DynamicString, bool> CompileTimeSymbolTable;
 
 typedef std::unordered_map<DynamicString, FileModifyTime> HeaderModificationTimeTable;
 
-struct SplicePoint
+typedef struct SplicePoint
 {
 	GeneratorOutput* output;
 	EvaluatorContext context;
 	const Token* blameToken;
-};
+} SplicePoint;
 
 typedef std::unordered_map<DynamicString, SplicePoint> SplicePointTable;
 typedef std::pair<const DynamicString, SplicePoint> SplicePointTablePair;
@@ -321,7 +322,7 @@ typedef std::vector<GeneratorOutput*> GeneratorOutputAddressArray;
 // Unlike context, which can't be changed, environment can be changed.
 // Keep in mind that calling functions which can change the environment may invalidate your pointers
 // if things resize.
-struct EvaluatorEnvironment
+typedef struct EvaluatorEnvironment
 {
 	// Compile-time-executable functions
 	MacroTable macros;
@@ -457,7 +458,7 @@ struct EvaluatorEnvironment
 
 	// Will NOT clean up macroExpansions! Use environmentDestroyInvalidateTokens()
 	CAKELISP_API ~EvaluatorEnvironment();
-};
+} EvaluatorEnvironment;
 
 // Make sure you're ready to do this! (see macroExpansions comment)
 // Essentially, this means don't call this function unless you will NOT follow any Token pointers in

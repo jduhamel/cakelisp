@@ -1,6 +1,6 @@
 #pragma once
 
-enum NameStyleMode
+typedef enum NameStyleMode
 {
 	NameStyleMode_None = 0,
 	// a-test-thing -> a_test_thing
@@ -18,4 +18,4 @@ enum NameStyleMode
 	//  my-cake-type arg1, int arg2 -> MyCakeType arg1, int arg2
 	// caketype arg1, int arg2 -> caketype arg1, int arg2
 	NameStyleMode_PascalCaseIfLispy
-};
+} NameStyleMode;

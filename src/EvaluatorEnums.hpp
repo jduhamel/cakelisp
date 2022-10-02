@@ -1,6 +1,6 @@
 #pragma once
 
-enum StringOutputModifierFlags
+typedef enum StringOutputModifierFlags
 {
 	StringOutMod_None = 0,
 	StringOutMod_NewlineAfter = 1 << 0,
@@ -53,18 +53,18 @@ enum StringOutputModifierFlags
 
 	StringOutMod_OpenScopeBlock = StringOutMod_OpenBlock | StringOutMod_ScopeEnter,
 	StringOutMod_CloseScopeBlock = StringOutMod_CloseBlock | StringOutMod_ScopeExit,
-};
+} StringOutputModifierFlags;
 
-enum ImportLanguage
+typedef enum ImportLanguage
 {
 	ImportLanguage_None = 0,
 	ImportLanguage_C,
 	ImportLanguage_Cakelisp
-};
+} ImportLanguage;
 
 // This allows generators to react and perform validation in different scopes, because few
 // generators will work in any scope
-enum EvaluatorScope
+typedef enum EvaluatorScope
 {
 	// Anything that takes plain-old declarations
 	EvaluatorScope_Body,
@@ -72,9 +72,9 @@ enum EvaluatorScope
 	EvaluatorScope_Module,
 	// For example, a C function call cannot have an if statement in its arguments
 	EvaluatorScope_ExpressionsOnly
-};
+} EvaluatorScope;
 
-enum ObjectType
+typedef enum ObjectType
 {
 	ObjectType_PseudoObject,
 	ObjectType_Function,
@@ -87,27 +87,27 @@ enum ObjectType
 	// Built at compile time, but not hooked up as a regular generator. These are hacked in and
 	// late-resolved. TODO Clean up...
 	ObjectType_CompileTimeExternalGenerator,
-};
+} ObjectType;
 
-enum ObjectReferenceGuessState
+typedef enum ObjectReferenceGuessState
 {
 	GuessState_None = 0,
 	GuessState_Guessed,
 	// References can skip the guessed state if the definition is already known but not loaded
 	GuessState_WaitingForLoad,
 	GuessState_Resolved,
-};
+} ObjectReferenceGuessState;
 
-enum ObjectReferenceResolutionType
+typedef enum ObjectReferenceResolutionType
 {
 	ObjectReferenceResolutionType_None = 0,
 	ObjectReferenceResolutionType_Splice,
 	// In the case of compile-time functions, the first reference encountered was when the comptime
 	// function was already loaded, so no action needs to be taken
 	ObjectReferenceResolutionType_AlreadyLoaded
-};
+} ObjectReferenceResolutionType;
 
-enum RequiredFeature
+typedef enum RequiredFeature
 {
 	// There's an assumption built-in to cakelisp that C should work, so that's the equivalent here
 	RequiredFeature_None = 0,
@@ -115,4 +115,4 @@ enum RequiredFeature
 	RequiredFeature_CppInDefinition = 1 << 1,
 	RequiredFeature_CppInDeclaration = 1 << 2,
 	RequiredFeature_Cpp = (RequiredFeature_CppInDefinition | RequiredFeature_CppInDeclaration),
-};
+} RequiredFeature;

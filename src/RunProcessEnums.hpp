@@ -1,7 +1,7 @@
 #pragma once
 
 // Update ProcessCommandArgumentTypeToString() after modifying this enum
-enum ProcessCommandArgumentType
+typedef enum ProcessCommandArgumentType
 {
 	ProcessCommandArgumentType_None = 0,
 
@@ -27,4 +27,4 @@ enum ProcessCommandArgumentType
 	// Pass to the linker, e.g. on clang, add -Wl,
 	ProcessCommandArgumentType_LinkerArguments,
 	ProcessCommandArgumentType_ExecutableOutput
-};
+} ProcessCommandArgumentType;
