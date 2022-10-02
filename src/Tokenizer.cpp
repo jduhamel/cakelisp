@@ -184,7 +184,7 @@ const char* tokenizeLine(const char* inputLine, const char* source, unsigned int
 						{
 							DynamicString appendString;
 							CopyContentsAndReset(appendString);
-							previousToken.contents.append(appendString);
+							dynamicStringAppendString(&previousToken.contents, appendString);
 							previousToken.type = TokenType_String;
 							tokenizeState = TokenizeState_Normal;
 							break;
