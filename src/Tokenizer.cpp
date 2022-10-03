@@ -59,11 +59,11 @@ const char* tokenizeLine(const char* inputLine, const char* source, unsigned int
 			return "String too long!";                                           \
 		}                                                                        \
 	}
-#define CopyContentsAndReset(outputString)    \
-	{                                         \
-		outputString = contentsBuffer;        \
-		contentsBufferWrite = contentsBuffer; \
-		*contentsBufferWrite = '\0';          \
+#define CopyContentsAndReset(outputString)               \
+	{                                                    \
+		setDynamicString(&outputString, contentsBuffer); \
+		contentsBufferWrite = contentsBuffer;            \
+		*contentsBufferWrite = '\0';                     \
 	}
 
 	int columnStart = 0;

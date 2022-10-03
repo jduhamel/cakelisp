@@ -33,7 +33,7 @@ static const char* g_environmentCompileTimeVariableDestroySignature = "('data (a
 
 GeneratorFunc findGenerator(EvaluatorEnvironment& environment, const char* functionName)
 {
-	GeneratorIterator findIt = environment.generators.find(DynamicString(functionName));
+	GeneratorIterator findIt = environment.generators.find(CreateDynamicString(functionName));
 	if (findIt != environment.generators.end())
 		return findIt->second;
 	return nullptr;
@@ -41,7 +41,7 @@ GeneratorFunc findGenerator(EvaluatorEnvironment& environment, const char* funct
 
 static MacroFunc findMacro(EvaluatorEnvironment& environment, const char* functionName)
 {
-	MacroIterator findIt = environment.macros.find(DynamicString(functionName));
+	MacroIterator findIt = environment.macros.find(CreateDynamicString(functionName));
 	if (findIt != environment.macros.end())
 		return findIt->second;
 	return nullptr;
@@ -50,7 +50,7 @@ static MacroFunc findMacro(EvaluatorEnvironment& environment, const char* functi
 void* findCompileTimeFunction(EvaluatorEnvironment& environment, const char* functionName)
 {
 	CompileTimeFunctionTableIterator findIt =
-	    environment.compileTimeFunctions.find(DynamicString(functionName));
+	    environment.compileTimeFunctions.find(CreateDynamicString(functionName));
 	if (findIt != environment.compileTimeFunctions.end())
 		return findIt->second;
 	return nullptr;
@@ -58,7 +58,7 @@ void* findCompileTimeFunction(EvaluatorEnvironment& environment, const char* fun
 
 bool findCompileTimeSymbol(EvaluatorEnvironment& environment, const char* symbolName)
 {
-	return environment.compileTimeSymbols.find(symbolName) != environment.compileTimeSymbols.end();
+	return environment.compileTimeSymbols.find(CreateDynamicString(symbolName)) != environment.compileTimeSymbols.end();
 }
 
 static bool isCompileTimeCodeLoaded(EvaluatorEnvironment& environment,
@@ -105,7 +105,7 @@ bool addObjectDefinition(EvaluatorEnvironment& environment, ObjectDefinition& de
 
 ObjectDefinition* findObjectDefinition(EvaluatorEnvironment& environment, const char* name)
 {
-	ObjectDefinitionMap::iterator findIt = environment.definitions.find(name);
+	ObjectDefinitionMap::iterator findIt = environment.definitions.find(CreateDynamicString(name));
 	if (findIt != environment.definitions.end())
 		return &findIt->second;
 	return nullptr;
@@ -116,7 +116,7 @@ const ObjectReferenceStatus* addObjectReference(EvaluatorEnvironment& environmen
                                                 ObjectReference& reference)
 {
 	// Default to the module requiring the reference, for top-level references
-	DynamicString definitionName = globalDefinitionName;
+	DynamicString definitionName = CreateDynamicString(globalDefinitionName);
 	if (!reference.context.definitionName && reference.context.scope != EvaluatorScope_Module)
 		Log("error: addObjectReference() expects a definitionName\n");
 
@@ -152,7 +152,7 @@ const ObjectReferenceStatus* addObjectReference(EvaluatorEnvironment& environmen
 		// make a good link to the reference in the reference pool, because it can easily be moved
 		// by hash realloc or vector resize
 		ObjectReferenceStatusMap::iterator findRefIt =
-		    findDefinition->second.references.find(dynamicStringToCStr(referenceNameToken.contents));
+		    findDefinition->second.references.find(referenceNameToken.contents);
 		if (findRefIt == findDefinition->second.references.end())
 		{
 			ObjectReferenceStatus newStatus;
@@ -206,7 +206,8 @@ bool CreateCompileTimeVariable(EvaluatorEnvironment& environment, const char* na
                                const char* typeExpression, void* data,
                                const char* destroyCompileTimeFuncName)
 {
-	CompileTimeVariableTableIterator findIt = environment.compileTimeVariables.find(name);
+	CompileTimeVariableTableIterator findIt =
+	    environment.compileTimeVariables.find(CreateDynamicString(name));
 	if (findIt != environment.compileTimeVariables.end())
 	{
 		Logf("error: CreateCompileTimeVariable(): variable %s already defined\n", name);
@@ -214,15 +215,16 @@ bool CreateCompileTimeVariable(EvaluatorEnvironment& environment, const char* na
 	}
 
 	CompileTimeVariable newCompileTimeVariable = {};
-	newCompileTimeVariable.type = typeExpression;
+	setDynamicString(&newCompileTimeVariable.type, typeExpression);
 	newCompileTimeVariable.data = data;
 	if (destroyCompileTimeFuncName)
-		newCompileTimeVariable.destroyCompileTimeFuncName = destroyCompileTimeFuncName;
-	environment.compileTimeVariables[name] = newCompileTimeVariable;
+		setDynamicString(&newCompileTimeVariable.destroyCompileTimeFuncName,
+		                 destroyCompileTimeFuncName);
+	environment.compileTimeVariables[CreateDynamicString(name)] = newCompileTimeVariable;
 
 	// Make sure it gets built and loaded once it is defined
 	if (destroyCompileTimeFuncName)
-		environment.requiredCompileTimeFunctions[destroyCompileTimeFuncName] =
+		environment.requiredCompileTimeFunctions[CreateDynamicString(destroyCompileTimeFuncName)] =
 		    "compile time variable destructor";
 
 	return true;
@@ -233,7 +235,8 @@ bool GetCompileTimeVariable(EvaluatorEnvironment& environment, const char* name,
 {
 	*dataOut = nullptr;
 
-	CompileTimeVariableTableIterator findIt = environment.compileTimeVariables.find(name);
+	CompileTimeVariableTableIterator findIt =
+	    environment.compileTimeVariables.find(CreateDynamicString(name));
 	if (findIt == environment.compileTimeVariables.end())
 		return false;
 
@@ -362,10 +365,11 @@ bool HandleInvocation_Recursive(EvaluatorEnvironment& environment, const Evaluat
 		return true;
 	}
 
-	GeneratorFunc invokedGenerator = findGenerator(environment, dynamicStringToCStr(invocationName.contents));
+	GeneratorFunc invokedGenerator =
+	    findGenerator(environment, dynamicStringToCStr(invocationName.contents));
 	if (invokedGenerator)
 	{
-		environment.lastGeneratorReferences[dynamicStringToCStr(invocationName.contents)] =
+		environment.lastGeneratorReferences[invocationName.contents] =
 		    &tokens[invocationStartIndex];
 
 		return invokedGenerator(environment, context, tokens, invocationStartIndex, output);
@@ -506,14 +510,14 @@ int EvaluateGenerate_Recursive(EvaluatorEnvironment& environment, const Evaluato
 					if (dynamicStringEqualsCString(token.contents, "null"))
 					{
 						// TODO: C vs. C++
-						addStringOutput(output.source, "nullptr", StringOutMod_None, &token);
+						addStringOutput(output.source, CreateDynamicString("nullptr"), StringOutMod_None, &token);
 						break;
 					}
 
 					// We need to convert what look like names in case they are lispy, but not
 					// integer, character, or floating point constants
-					char firstChar = token.contents[0];
-					char secondChar = dynamicStringSize(token.contents) > 1 ? token.contents[1] : 0;
+					char firstChar = dynamicStringGetChar(token.contents, 0);
+					char secondChar = dynamicStringSize(token.contents) > 1 ? dynamicStringGetChar(token.contents, 1) : 0;
 					if (firstChar == '\'' || isdigit(firstChar) ||
 					    (firstChar == '-' && (secondChar == '.' || isdigit(secondChar))))
 						addStringOutput(output.source, token.contents, StringOutMod_None, &token);
@@ -605,7 +609,8 @@ bool ReplaceAndEvaluateDefinition(EvaluatorEnvironment& environment,
                                   const char* definitionToReplaceName,
                                   const TokenArray& newDefinitionTokens)
 {
-	ObjectDefinitionMap::iterator findIt = environment.definitions.find(definitionToReplaceName);
+	ObjectDefinitionMap::iterator findIt =
+	    environment.definitions.find(CreateDynamicString(definitionToReplaceName));
 	if (findIt == environment.definitions.end())
 	{
 		Logf("error: ReplaceAndEvaluateDefinition() could not find definition '%s'\n",
@@ -658,7 +663,8 @@ bool ReplaceAndEvaluateDefinition(EvaluatorEnvironment& environment,
 bool ClearAndEvaluateAtSplicePoint(EvaluatorEnvironment& environment, const char* splicePointName,
                                    const TokenArray* newSpliceTokens)
 {
-	SplicePointTableIterator findIt = environment.splicePoints.find(splicePointName);
+	SplicePointTableIterator findIt =
+	    environment.splicePoints.find(CreateDynamicString(splicePointName));
 	if (findIt == environment.splicePoints.end())
 	{
 		Logf("error: splice point %s not found\n", splicePointName);
@@ -699,7 +705,7 @@ static void PropagateRequiredToReferences(EvaluatorEnvironment& environment)
 			if (definition.type == ObjectType_CompileTimeFunction && !definition.isRequired)
 			{
 				RequiredCompileTimeFunctionReasonsTableIterator findIt =
-				    environment.requiredCompileTimeFunctions.find(dynamicStringToCStr(definition.name));
+				    environment.requiredCompileTimeFunctions.find(definition.name);
 
 				if (findIt != environment.requiredCompileTimeFunctions.end())
 				{
@@ -780,7 +786,7 @@ static ObjectReferenceArray* GetReferenceListFromReference(EvaluatorEnvironment&
                                                            const char* referenceToResolve)
 {
 	ObjectReferencePoolMap::iterator referencePoolIt =
-	    environment.referencePools.find(referenceToResolve);
+	    environment.referencePools.find(CreateDynamicString(referenceToResolve));
 	if (referencePoolIt == environment.referencePools.end())
 		return nullptr;
 
@@ -902,12 +908,13 @@ bool ComptimePrepareHeaders(EvaluatorEnvironment& environment)
 	DynamicStringArray headerSearchDirectories;
 	{
 		// Need working dir to find cached file itself
-		headerSearchDirectories.push_back(".");
+		headerSearchDirectories.push_back(CreateDynamicString("."));
 		// Need Cakelisp src dir to find cakelisp headers. If these aren't checked for
 		// modification, comptime code can end up calling stale functions/initializing
 		// incorrect types
-		headerSearchDirectories.push_back(
-		    dynamicStringIsEmpty(environment.cakelispSrcDir) ? "src" : environment.cakelispSrcDir);
+		headerSearchDirectories.push_back(dynamicStringIsEmpty(environment.cakelispSrcDir) ?
+		                                      CreateDynamicString("src") :
+		                                      environment.cakelispSrcDir);
 	}
 
 	char combinedHeaderRelativePath[MAX_PATH_LENGTH] = {0};
@@ -971,7 +978,7 @@ bool ComptimePrepareHeaders(EvaluatorEnvironment& environment)
 			Logf("No need to update precompiled header %s\n", precompiledHeaderFilename);
 
 		environment.comptimeHeadersPrepared = true;
-		environment.comptimeCombinedHeaderFilename = combinedHeaderName;
+		setDynamicString(&environment.comptimeCombinedHeaderFilename, combinedHeaderName);
 		free(buildArguments);
 		return true;
 	}
@@ -986,7 +993,7 @@ bool ComptimePrepareHeaders(EvaluatorEnvironment& environment)
 	if (runProcess(arguments, &status) != 0)
 	{
 		free(buildArguments);
-		environment.comptimeNewCommandCrcs.erase(precompiledHeaderFilename);
+		environment.comptimeNewCommandCrcs.erase(CreateDynamicString(precompiledHeaderFilename));
 		return false;
 	}
 
@@ -997,13 +1004,13 @@ bool ComptimePrepareHeaders(EvaluatorEnvironment& environment)
 	if (status == 0)
 	{
 		environment.comptimeHeadersPrepared = true;
-		environment.comptimeCombinedHeaderFilename = combinedHeaderName;
+		setDynamicString(&environment.comptimeCombinedHeaderFilename, combinedHeaderName);
 		setSourceArtifactCrc(environment, combinedHeaderRelativePath, precompiledHeaderFilename);
 		return true;
 	}
 
 	Logf("Failed to update precompiled header %s\n", precompiledHeaderFilename);
-	environment.comptimeNewCommandCrcs.erase(precompiledHeaderFilename);
+	environment.comptimeNewCommandCrcs.erase(CreateDynamicString(precompiledHeaderFilename));
 	return false;
 }
 
@@ -1062,8 +1069,9 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		    cakelispCombinedHeaderFilename, compileTimeBuildExecutable);
 
 		// TODO: Hard-coded compiler option bad
-		precompiledHeadersToIncludeStorage.push_back("-include");
-		precompiledHeadersToIncludeStorage.push_back(cakelispCombinedHeaderFilename);
+		precompiledHeadersToIncludeStorage.push_back(CreateDynamicString("-include"));
+		precompiledHeadersToIncludeStorage.push_back(
+		    CreateDynamicString(cakelispCombinedHeaderFilename));
 		precompiledHeadersToInclude.reserve(precompiledHeadersToIncludeStorage.size());
 		for (const DynamicString& arg : precompiledHeadersToIncludeStorage)
 			precompiledHeadersToInclude.push_back(dynamicStringToCStr(arg));
@@ -1100,7 +1108,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		char artifactsName[MAX_PATH_LENGTH] = {0};
 		// Various stages will append the appropriate file extension
 		PrintfBuffer(artifactsName, "comptime_%s", convertedNameBuffer);
-		buildObject.artifactsName = artifactsName;
+		setDynamicString(&buildObject.artifactsName, artifactsName);
 		char fileOutputName[MAX_PATH_LENGTH] = {0};
 		// Writer will append the appropriate file extensions
 		PrintfBuffer(fileOutputName, "%s/%s", cakelispWorkingDir,
@@ -1149,9 +1157,9 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 				continue;
 			}
 
-			addStringOutput(autoIncludes.source, "#include", StringOutMod_SpaceAfter,
-			                referenceStatus.name);
-			addStringOutput(autoIncludes.source, dynamicStringToCStr(requiredDefinition->compileTimeHeaderName),
+			addStringOutput(autoIncludes.source, CreateDynamicString("#include"),
+			                StringOutMod_SpaceAfter, referenceStatus.name);
+			addStringOutput(autoIncludes.source, requiredDefinition->compileTimeHeaderName,
 			                StringOutMod_SurroundWithQuotes, referenceStatus.name);
 			addLangTokenOutput(autoIncludes.source, StringOutMod_NewlineAfter,
 			                   referenceStatus.name);
@@ -1187,7 +1195,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 			// Facilitates this function being used later by other compile-time functions
 			char localHeaderOutputName[MAX_PATH_LENGTH] = {0};
 			PrintfBuffer(localHeaderOutputName, "%s.hpp", artifactsName);
-			definition->compileTimeHeaderName = localHeaderOutputName;
+			setDynamicString(&definition->compileTimeHeaderName, localHeaderOutputName);
 		}
 		// Use the separate output prepared specifically for this compile-time object
 		if (!writeGeneratorOutput(*definition->output, nameSettings, formatSettings,
@@ -1205,18 +1213,18 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		char sourceOutputName[MAX_PATH_LENGTH] = {0};
 		PrintfBuffer(sourceOutputName, "%s/%s.cpp", cakelispWorkingDir,
 		             dynamicStringToCStr(buildObject.artifactsName));
-		buildObject.sourceOutputName = sourceOutputName;
+		setDynamicString(&buildObject.sourceOutputName, sourceOutputName);
 
 		char buildObjectName[MAX_PATH_LENGTH] = {0};
 		PrintfBuffer(buildObjectName, "%s/%s.%s", cakelispWorkingDir,
 		             dynamicStringToCStr(buildObject.artifactsName), compilerObjectExtension);
-		buildObject.buildObjectName = buildObjectName;
+		setDynamicString(&buildObject.buildObjectName, buildObjectName);
 
 		char dynamicLibraryOut[MAX_PATH_LENGTH] = {0};
 		PrintfBuffer(dynamicLibraryOut, "%s/%s%s.%s", cakelispWorkingDir,
 		             linkerDynamicLibraryPrefix, dynamicStringToCStr(buildObject.artifactsName),
 		             linkerDynamicLibraryExtension);
-		buildObject.dynamicLibraryPath = dynamicLibraryOut;
+		setDynamicString(&buildObject.dynamicLibraryPath, dynamicLibraryOut);
 
 		// Save our import library name for other functions to use
 		if (environment.isMsvcCompiler && definition->type == ObjectType_CompileTimeFunction)
@@ -1224,7 +1232,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 			char importLibraryName[MAX_PATH_LENGTH] = {0};
 			PrintfBuffer(importLibraryName, "%s.%s", dynamicStringToCStr(buildObject.artifactsName),
 			             compilerImportLibraryExtension);
-			definition->compileTimeImportLibraryName = importLibraryName;
+			setDynamicString(&definition->compileTimeImportLibraryName, importLibraryName);
 		}
 
 		char headerInclude[MAX_PATH_LENGTH] = {0};
@@ -1263,12 +1271,13 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 			DynamicStringArray headerSearchDirectories;
 			{
 				// Need working dir to find cached file itself
-				headerSearchDirectories.push_back(".");
+				headerSearchDirectories.push_back(CreateDynamicString("."));
 				// Need Cakelisp src dir to find cakelisp headers. If these aren't checked for
 				// modification, comptime code can end up calling stale functions/initializing
 				// incorrect types
-				headerSearchDirectories.push_back(
-				    dynamicStringIsEmpty(environment.cakelispSrcDir) ? "src" : environment.cakelispSrcDir);
+				headerSearchDirectories.push_back(dynamicStringIsEmpty(environment.cakelispSrcDir) ?
+				                                      CreateDynamicString("src") :
+				                                      environment.cakelispSrcDir);
 			}
 
 			if (!cppFileNeedsBuild(
@@ -1299,7 +1308,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		{
 			// TODO: Abort building if cannot invoke compiler?
 			free(buildArguments);
-			environment.comptimeNewCommandCrcs.erase(dynamicStringToCStr(buildObject.dynamicLibraryPath));
+			environment.comptimeNewCommandCrcs.erase(buildObject.dynamicLibraryPath);
 			continue;
 		}
 
@@ -1328,7 +1337,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 
 		if (buildObject.status != 0)
 		{
-			environment.comptimeNewCommandCrcs.erase(dynamicStringToCStr(buildObject.dynamicLibraryPath));
+			environment.comptimeNewCommandCrcs.erase(buildObject.dynamicLibraryPath);
 
 			ErrorAtTokenf(*buildObject.definition->definitionInvocation,
 			              "failed to compile definition '%s' with status %d",
@@ -1355,11 +1364,11 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		DynamicStringArray importLibraryPaths;
 		DynamicStringArray importLibraries;
 		// Need to be able to find imported dll import libraries
-		importLibraryPaths.push_back(cakelispWorkingDir);
+		importLibraryPaths.push_back(CreateDynamicString(cakelispWorkingDir));
 		PushBackAll(importLibraries, buildObject.importLibraries);
 		if (environment.isMsvcCompiler)
 		{
-			if (environment.cakelispLibDir.empty())
+			if (dynamicStringIsEmpty(environment.cakelispLibDir))
 			{
 				ErrorAtTokenf(*buildObject.definition->definitionInvocation,
 				              "cannot link definition '%s' because cakelisp-lib-dir is not set. "
@@ -1370,7 +1379,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 				return 0;
 			}
 			importLibraryPaths.push_back(environment.cakelispLibDir);
-			importLibraries.push_back("cakelisp.lib");
+			importLibraries.push_back(CreateDynamicString("cakelisp.lib"));
 		}
 
 		CStringArray importLibraryPathsArgs;
@@ -2055,7 +2064,7 @@ CrcWithFlags cacheUpdateFileCrc(EvaluatorEnvironment& environment, const char* f
 	CrcWithFlags newCrc = {0};
 	newCrc.crc = sourceCrc;
 	newCrc.wasModified = true;
-	environment.cachedIntraBuildFileCrcs[filename] = newCrc;
+	environment.cachedIntraBuildFileCrcs[CreateDynamicString(filename)] = newCrc;
 	return newCrc;
 }
 
@@ -2074,7 +2083,7 @@ void setSourceArtifactCrc(EvaluatorEnvironment& environment, const char* source,
 {
 	CrcWithFlags sourceCrc = {0};
 	{
-		ArtifactCrcTable::iterator findIt = environment.cachedIntraBuildFileCrcs.find(source);
+		ArtifactCrcTable::iterator findIt = environment.cachedIntraBuildFileCrcs.find(CreateDynamicString(source));
 		if (findIt != environment.cachedIntraBuildFileCrcs.end())
 			sourceCrc = findIt->second;
 		else
@@ -2110,7 +2119,8 @@ bool crcsMatchExpectedUpdateCrcPairing(EvaluatorEnvironment& environment, const 
 	{
 		CrcWithFlags sourceCrc = {0};
 		{
-			ArtifactCrcTable::iterator findIt = environment.cachedIntraBuildFileCrcs.find(source);
+			ArtifactCrcTable::iterator findIt =
+			    environment.cachedIntraBuildFileCrcs.find(CreateDynamicString(source));
 			if (findIt != environment.cachedIntraBuildFileCrcs.end())
 				sourceCrc = findIt->second;
 			else
@@ -2240,7 +2250,7 @@ bool registerEvaluateGenerator(EvaluatorEnvironment& environment, const char* ge
 	else
 	{
 		ObjectDefinition newDefinition = {};
-		newDefinition.name = generatorName;
+		setDynamicString(&newDefinition.name, generatorName);
 		newDefinition.definitionInvocation = blameToken;
 		// Make sure these don't get built
 		newDefinition.type = ObjectType_CompileTimeExternalGenerator;
@@ -2250,7 +2260,7 @@ bool registerEvaluateGenerator(EvaluatorEnvironment& environment, const char* ge
 			return false;
 		}
 
-		environment.generators[generatorName] = function;
+		environment.generators[CreateDynamicString(generatorName)] = function;
 
 		if (!environment.referencePools.empty())
 			ReevaluateResolveReferences(environment, generatorName, /*warnIfNoReferences=*/false,

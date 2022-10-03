@@ -1,9 +1,21 @@
 #pragma once
-// TODO: Purge std::string
-#include <string>
-typedef std::string DynamicString;
 
-DynamicString CreateDynamicString(const char* optionalInitialValue);
+#include <string> // TODO Remove
+
+#ifdef WRAPPED_STRING
+typedef struct DynamicString
+{
+	std::string str;
+} DynamicString;
+#else
+typedef std::string DynamicString;
+#endif
+
+DynamicString CreateDynamicString(const char* initialValue);
+
+void setDynamicString(DynamicString* a, const char* newValue);
+
+char dynamicStringGetChar(const DynamicString a, unsigned int index);
 
 // These are all pass-by-value because the string will not be copied once it's the C version
 
