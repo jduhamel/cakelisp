@@ -89,6 +89,13 @@ bool writeStringToBuffer(const char* str, char** at, char* bufferStart, int buff
 
 #define PushBackAll(dest, src) (dest).insert((dest).end(), (src).begin(), (src).end())
 
+#define EachItemInDynamicArray(array, index, item, itemType) \
+	for (int index = 0; index < arrlen(array); ++index)      \
+	{                                                        \
+		itemType item = array[index];
+
+#define EachItemInDynamicArrayEnd() }
+
 FILE* fileOpen(const char* filename, const char* mode);
 
 uint32_t crc32_for_byte(uint32_t r);

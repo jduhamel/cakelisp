@@ -4,6 +4,9 @@
 
 #include "Logging.hpp"
 
+#define STB_DS_IMPLEMENTATION
+#include "stb_ds.h"
+
 DynamicString EmptyString;
 
 void printIndentToDepth(int depth)

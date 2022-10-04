@@ -4,4 +4,4 @@
 #include "DynamicString.hpp"
 
 typedef std::vector<DynamicString> DynamicStringArray;
-typedef std::vector<const char*> CStringArray;
+typedef const char** CStringArray; // stb array

@@ -15,6 +15,7 @@
 #include "Tokenizer.hpp"
 #include "Utilities.hpp"
 #include "Writer.hpp"
+#include "stb_ds.h"
 
 //
 // Environment
@@ -920,12 +921,17 @@ bool ComptimePrepareHeaders(EvaluatorEnvironment& environment)
 	char combinedHeaderRelativePath[MAX_PATH_LENGTH] = {0};
 	PrintfBuffer(combinedHeaderRelativePath, "%s/%s", outputDir, combinedHeaderName);
 
-	CStringArray headersToCombine(ArraySize(g_comptimeDefaultHeaders));
+	CStringArray headersToCombine = nullptr;
+	arrsetlen(headersToCombine, ArraySize(g_comptimeDefaultHeaders));
 	for (size_t i = 0; i < ArraySize(g_comptimeDefaultHeaders); ++i)
 		headersToCombine[i] = g_comptimeDefaultHeaders[i];
 
 	if (!writeCombinedHeader(combinedHeaderRelativePath, headersToCombine))
+	{
+		arrfree(headersToCombine);
 		return false;
+	}
+	arrfree(headersToCombine);
 
 	const char* buildExecutable =
 	    dynamicStringToCStr(environment.compileTimeHeaderPrecompilerCommand.fileToExecute);

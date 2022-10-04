@@ -255,16 +255,16 @@ int main(int numArguments, char* arguments[])
 		return 0;
 	}
 
-	CStringArray filesToEvaluate;
+	CStringArray filesToEvaluate = nullptr;
 	for (int i = 1; i < numArguments; ++i)
 	{
 		if (isOptionArgument(arguments[i]))
 			continue;
 
-		filesToEvaluate.push_back(arguments[i]);
+		arrput(filesToEvaluate, arguments[i]);
 	}
 
-	if (filesToEvaluate.empty())
+	if (!arrlen(filesToEvaluate))
 	{
 		Log("Error: expected file(s) to evaluate\n\n");
 		printHelp(options, ArraySize(options));
@@ -284,7 +284,7 @@ int main(int numArguments, char* arguments[])
 		}
 	}
 
-	for (const char* filename : filesToEvaluate)
+	EachItemInDynamicArray(filesToEvaluate, i, filename, const char*)
 	{
 		if (!moduleManagerAddEvaluateFile(moduleManager, filename, /*moduleOut=*/nullptr))
 		{
@@ -292,6 +292,7 @@ int main(int numArguments, char* arguments[])
 			return 1;
 		}
 	}
+	EachItemInDynamicArrayEnd;
 
 	if (!moduleManagerEvaluateResolveReferences(moduleManager))
 	{

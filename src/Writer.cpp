@@ -1,15 +1,16 @@
 #include "Writer.hpp"
 
+#include <stdarg.h>  // va_start
+#include <stdio.h>
+#include <string.h>
+
 #include "Converters.hpp"
 #include "Evaluator.hpp"
 #include "FileUtilities.hpp"
 #include "Logging.hpp"
 #include "Tokenizer.hpp"
 #include "Utilities.hpp"
-
-#include <stdarg.h>  // va_start
-#include <stdio.h>
-#include <string.h>
+#include "stb_ds.h"
 
 // This will delete the file at tempFilename
 bool writeIfContentsNewer(const char* tempFilename, const char* outputFilename)
@@ -690,8 +691,9 @@ bool writeCombinedHeader(const char* combinedHeaderFilename,
 	// always the main file
 	// fprintf(combinedHeaderFile, "#pragma once\n");
 
-	for (const char* sourceHeader : headersToInclude)
+	for (int i = 0; i < arrlen(headersToInclude); ++i)
 	{
+		const char* sourceHeader = headersToInclude[i];
 		fprintf(combinedHeaderFile, "#include \"%s\"\n", sourceHeader);
 	}
 
