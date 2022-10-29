@@ -292,11 +292,17 @@ int main(int numArguments, char* arguments[])
 		}
 	}
 
+	if (logging.phases)
+		Log("\nEvaluated all files. Resolving references.\n");
+
 	if (!moduleManagerEvaluateResolveReferences(moduleManager))
 	{
 		moduleManagerDestroy(moduleManager);
 		return 1;
 	}
+
+	if (logging.phases)
+		Log("\nReferences resolved.\n");
 
 	if (!moduleManagerWriteGeneratedOutput(moduleManager))
 	{

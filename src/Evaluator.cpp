@@ -878,6 +878,14 @@ static int ReevaluateResolveReferences(EvaluatorEnvironment& environment,
 			continue;
 		}
 
+		// For whatever reason, this reference requested a deferral. This could be because it is
+		// dependent on another macro, which we currently don't have a clean way of supporting.
+		if (!hasErrors && environment.numResolutionsToDefer)
+		{
+			--environment.numResolutionsToDefer;
+			continue;
+		}
+
 		if (hasErrors)
 			continue;
 
@@ -1774,7 +1782,68 @@ bool EvaluateResolveReferences(EvaluatorEnvironment& environment)
 			needsAnotherPass = BuildEvaluateReferences(environment, numBuildResolveErrors);
 			if (numBuildResolveErrors)
 				break;
+
+			// Let's wait until BuildEvaluateReferences is done with everything other than deferrals
+			if (!environment.deferredResolutions.empty() && !needsAnotherPass)
+			{
+				int numDeferredErrors = 0;
+				// Make a copy in case resolving causes more deferred resolutions
+				std::vector<std::string> deferredResolutionsCopy;
+				deferredResolutionsCopy.reserve(environment.deferredResolutions.size());
+				PushBackAll(deferredResolutionsCopy, environment.deferredResolutions);
+				// We are going to try to resolve all of them here. If they still can't be resolved,
+				// they will be deferred again (at their discretion).
+				environment.deferredResolutions.clear();
+				int numDeferredReferencesResolved = 0;
+				for (const std::string& resolverName : deferredResolutionsCopy)
+				{
+					if (logging.buildProcess)
+						Logf("Attempting to resolve deferred references to %s\n",
+						     resolverName.c_str());
+					int numErrors = 0;
+					numDeferredReferencesResolved +=
+					    ReevaluateResolveReferences(environment, resolverName.c_str(),
+					                                /*warnIfNoReferences=*/true, numErrors);
+					numDeferredErrors += numErrors;
+					if (numDeferredErrors)
+					{
+						numBuildResolveErrors += numDeferredErrors;
+						break;
+					}
+				}
+
+				// Let's make sure we go again if we did resolve anything
+				if (numDeferredReferencesResolved)
+					needsAnotherPass = true;
+			}
 		} while (needsAnotherPass);
+
+		if (!environment.deferredResolutions.empty())
+		{
+			for (const std::string& resolverName : environment.deferredResolutions)
+			{
+				// We are guaranteed to find it because no resolvers are added to
+				// environment.deferredResolutions otherwise
+				ObjectDefinition* resolverDefinition =
+				    findObjectDefinition(environment, resolverName.c_str());
+				ErrorAtTokenf(
+				    *resolverDefinition->definitionInvocation,
+				    "Failed to resolve deferred references to %s. It seems that deferral will not "
+				    "resolve the reference at this time. Note that post-references-resolved runs "
+				    "only if all deferred references are resolved.",
+				    resolverName.c_str());
+				std::vector<ObjectReference>* references =
+				    GetReferenceListFromReference(environment, resolverName.c_str());
+				for (int i = 0; i < (int)references->size(); ++i)
+				{
+					if ((*references)[i].isResolved)
+						continue;
+					NoteAtToken((*((*references)[i]).tokens)[(*references)[i].startIndex],
+					            "This reference was unresolved and possibly deferred");
+				}
+				++numBuildResolveErrors;
+			}
+		}
 
 		if (numBuildResolveErrors)
 			break;
@@ -2349,4 +2418,25 @@ bool StringOutputHasAnyMeaningfulOutput(const std::vector<StringOutput>* stringO
 	}
 
 	return false;
+}
+
+bool DeferCurrentReferenceResolution(EvaluatorEnvironment& environment, const char* resolverName)
+{
+	if (!findObjectDefinition(environment, resolverName))
+	{
+		Logf("error: Resolver %s was not found in the environment. It cannot be deferred.\n",
+		     resolverName);
+		return false;
+	}
+
+	++environment.numResolutionsToDefer;
+	// We only need to record that the resolver needs to be re-evaluated once
+	for (const std::string& existingResolverName : environment.deferredResolutions)
+	{
+		// Already in line for deferred resolution
+		if (existingResolverName.compare(resolverName) == 0)
+			return true;
+	}
+	environment.deferredResolutions.push_back(resolverName);
+	return true;
 }
