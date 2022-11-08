@@ -134,10 +134,33 @@
          (addStringOutput output-dest (field namespace-name-token contents)
                           StringOutMod_None (addr namespace-name-token))
          (addLangTokenOutput output-dest StringOutMod_OpenBlock (addr namespace-name-token))
-         (call-on push_back namespace-stack (FindCloseParenTokenIndex tokens current-index)))
+         (call-on push_back namespace-stack (FindCloseParenTokenIndex tokens current-index))
+         (RequiresCppFeature
+          (field context module)
+          (findObjectDefinition environment (call-on c_str (path context . definitionName > contents)))
+          (? is-global RequiredFeatureExposure_Global
+             RequiredFeatureExposure_ModuleLocal)
+          (addr current-token)))
 
-        ((or (= 0 (call-on compare (field invocation-token contents) "class"))
-             (= 0 (call-on compare (field invocation-token contents) "struct")))
+        ((= 0 (call-on compare (field invocation-token contents) "struct"))
+         (unless (< (+ 2 current-index) end-invocation-index)
+           (ErrorAtToken invocation-token "missing name argument")
+           (return false))
+         (var type-name-token (ref (const Token)) (at (+ 2 current-index) tokens))
+         (unless (ExpectTokenType "forward-declare" type-name-token TokenType_Symbol)
+           (return false))
+         (addStringOutput output-dest "typedef"
+                          StringOutMod_SpaceAfter (addr invocation-token))
+         (addStringOutput output-dest (field invocation-token contents)
+                          StringOutMod_SpaceAfter (addr invocation-token))
+         (addStringOutput output-dest (field type-name-token contents)
+                          StringOutMod_ConvertTypeName (addr type-name-token))
+         (addLangTokenOutput output-dest StringOutMod_SpaceAfter (addr type-name-token))
+         (addStringOutput output-dest (field type-name-token contents)
+                          StringOutMod_ConvertTypeName (addr type-name-token))
+         (addLangTokenOutput output-dest StringOutMod_EndStatement (addr type-name-token)))
+
+        ((= 0 (call-on compare (field invocation-token contents) "class"))
          (unless (< (+ 2 current-index) end-invocation-index)
            (ErrorAtToken invocation-token "missing name argument")
            (return false))
@@ -148,7 +171,13 @@
                           StringOutMod_SpaceAfter (addr invocation-token))
          (addStringOutput output-dest (field type-name-token contents)
                           StringOutMod_ConvertTypeName (addr type-name-token))
-         (addLangTokenOutput output-dest StringOutMod_EndStatement (addr type-name-token)))
+         (addLangTokenOutput output-dest StringOutMod_EndStatement (addr type-name-token))
+         (RequiresCppFeature
+            (field context module)
+            (findObjectDefinition environment (call-on c_str (path context . definitionName > contents)))
+            (? is-global RequiredFeatureExposure_Global
+               RequiredFeatureExposure_ModuleLocal)
+            (addr invocation-token)))
         (true
          (ErrorAtToken invocation-token "unknown forward-declare type")
          (return false))))
