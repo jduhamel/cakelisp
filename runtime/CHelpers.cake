@@ -565,3 +565,11 @@
     (ErrorAtToken (deref field-name-token) "Expected value for this field")
     (return false))
   (return true))
+
+;; TODO: Support more compilers and platforms
+;; TODO: Only use if in C, because C++11 added alignof()
+(defmacro alignment-of (type-or-field any)
+  ;; GCC: https://gcc.gnu.org/onlinedocs/gcc/Alignment.html#Alignment
+  (tokenize-push output
+    (__alignof__ (token-splice type-or-field)))
+  (return true))
