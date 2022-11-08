@@ -9,7 +9,7 @@
 
 (comptime-cond
  ('Unix
-  (c-import "<sys/stat.h>" "<unistd.h>")))
+  (c-import "<sys/stat.h>" "<unistd.h>" &with-decls "<stdbool.h>")))
 
 ;;
 ;; Function management

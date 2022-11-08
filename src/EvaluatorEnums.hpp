@@ -116,3 +116,10 @@ enum RequiredFeature
 	RequiredFeature_CppInDeclaration = 1 << 2,
 	RequiredFeature_Cpp = (RequiredFeature_CppInDefinition | RequiredFeature_CppInDeclaration),
 };
+
+enum RequiredFeatureExposure
+{
+	RequiredFeatureExposure_Comptime,
+	RequiredFeatureExposure_ModuleLocal,
+	RequiredFeatureExposure_Global,
+};

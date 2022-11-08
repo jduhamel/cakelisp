@@ -3,6 +3,7 @@
 #include <cctype>  // isdigit
 
 #include "Evaluator.hpp"
+#include "Logging.hpp"
 #include "ModuleManager.hpp"
 #include "Tokenizer.hpp"
 #include "Utilities.hpp"
@@ -576,7 +577,8 @@ bool parseFunctionSignature(const std::vector<Token>& tokens, int argsIndex,
 bool outputFunctionReturnType(EvaluatorEnvironment& environment, const EvaluatorContext& context,
                               const std::vector<Token>& tokens, GeneratorOutput& output,
                               int returnTypeStart, int startInvocationIndex, int endArgsIndex,
-                              bool outputSource, bool outputHeader)
+                              bool outputSource, bool outputHeader,
+                              RequiredFeatureExposure exposure)
 {
 	if (returnTypeStart == -1)
 	{
@@ -610,7 +612,8 @@ bool outputFunctionReturnType(EvaluatorEnvironment& environment, const Evaluator
 		std::vector<StringOutput> afterNameOutput;
 		// Arrays cannot be return types, they must be * instead
 		if (!tokenizedCTypeToString_Recursive(environment, context, tokens, returnTypeStart,
-		                                      /*allowArray=*/false, typeOutput, afterNameOutput))
+		                                      /*allowArray=*/false, typeOutput, afterNameOutput,
+		                                      exposure))
 			return false;
 
 		if (!afterNameOutput.empty())
@@ -637,7 +640,8 @@ bool outputFunctionReturnType(EvaluatorEnvironment& environment, const Evaluator
 bool outputFunctionArguments(EvaluatorEnvironment& environment, const EvaluatorContext& context,
                              const std::vector<Token>& tokens, GeneratorOutput& output,
                              const std::vector<FunctionArgumentTokens>& arguments,
-                             int isVariadicIndex, bool outputSource, bool outputHeader)
+                             int isVariadicIndex, bool outputSource, bool outputHeader,
+                             RequiredFeatureExposure exposure)
 {
 	int numFunctionArguments = arguments.size();
 	for (int i = 0; i < numFunctionArguments; ++i)
@@ -645,9 +649,9 @@ bool outputFunctionArguments(EvaluatorEnvironment& environment, const EvaluatorC
 		const FunctionArgumentTokens& arg = arguments[i];
 		std::vector<StringOutput> typeOutput;
 		std::vector<StringOutput> afterNameOutput;
-		bool typeValid =
-		    tokenizedCTypeToString_Recursive(environment, context, tokens, arg.startTypeIndex,
-		                                     /*allowArray=*/true, typeOutput, afterNameOutput);
+		bool typeValid = tokenizedCTypeToString_Recursive(
+		    environment, context, tokens, arg.startTypeIndex,
+		    /*allowArray=*/true, typeOutput, afterNameOutput, exposure);
 		if (!typeValid)
 			return false;
 
@@ -713,7 +717,8 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
                                       const EvaluatorContext& context,
                                       const std::vector<Token>& tokens, int startTokenIndex,
                                       bool allowArray, std::vector<StringOutput>& typeOutput,
-                                      std::vector<StringOutput>& afterNameOutput)
+                                      std::vector<StringOutput>& afterNameOutput,
+									  RequiredFeatureExposure exposure)
 {
 	if (&typeOutput == &afterNameOutput)
 	{
@@ -758,6 +763,8 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 			if (!ExpectNumArguments(tokens, startTokenIndex, endTokenIndex, 2))
 				return false;
 
+			bool isAddr = typeInvocation.contents.compare("addr") == 0;
+
 			// Append pointer/reference
 			int typeIndex =
 			    getExpectedArgument("expected type", tokens, startTokenIndex, 1, endTokenIndex);
@@ -765,11 +772,18 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 				return false;
 
 			if (!tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
-			                                      allowArray, typeOutput, afterNameOutput))
+			                                      allowArray, typeOutput, afterNameOutput,
+			                                      exposure))
 				return false;
 
-			addStringOutput(typeOutput, typeInvocation.contents.compare("addr") == 0 ? "*" : "&",
+			addStringOutput(typeOutput, isAddr ? "*" : "&",
 			                StringOutMod_None, &typeInvocation);
+
+			if (!isAddr)
+				RequiresCppFeature(
+				    context.module,
+				    findObjectDefinition(environment, context.definitionName->contents.c_str()),
+				    exposure, &typeInvocation);
 		}
 		else if (typeInvocation.contents.compare("array") == 0)
 		{
@@ -835,7 +849,8 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 			// Type parsing happens after the [] have already been appended because the array's type
 			// may include another array dimension, which must be specified after the current array
 			return tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
-			                                        allowArray, typeOutput, afterNameOutput);
+			                                        allowArray, typeOutput, afterNameOutput,
+			                                        exposure);
 		}
 		else if (typeInvocation.contents.compare("const") == 0)
 		{
@@ -857,7 +872,8 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 				                &typeInvocation);
 
 			if (!tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
-			                                      allowArray, typeOutput, afterNameOutput))
+			                                      allowArray, typeOutput, afterNameOutput,
+			                                      exposure))
 				return false;
 
 			if (isConstPointer)
@@ -879,12 +895,17 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 				// parameters anyways (as far as I can tell)
 				if (!tokenizedCTypeToString_Recursive(environment, context, tokens, startScopeIndex,
 				                                      /*allowArray=*/false, typeOutput,
-				                                      afterNameOutput))
+				                                      afterNameOutput, exposure))
 					return false;
 
 				if (!isLastArgument(tokens, startScopeIndex, endTokenIndex))
 					addStringOutput(typeOutput, "::", StringOutMod_None, &tokens[startScopeIndex]);
 			}
+
+			RequiresCppFeature(
+			    context.module,
+			    findObjectDefinition(environment, context.definitionName->contents.c_str()),
+			    exposure, &typeInvocation);
 		}
 		else if (typeInvocation.contents.compare("rval-ref-to") == 0)
 		{
@@ -897,10 +918,16 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 				return false;
 
 			if (!tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
-			                                      allowArray, typeOutput, afterNameOutput))
+			                                      allowArray, typeOutput, afterNameOutput,
+			                                      exposure))
 				return false;
 
 			addStringOutput(typeOutput, "&&", StringOutMod_None, &typeInvocation);
+
+			RequiresCppFeature(
+			    context.module,
+			    findObjectDefinition(environment, context.definitionName->contents.c_str()),
+			    exposure, &typeInvocation);
 		}
 		else if (typeInvocation.contents.compare("template") == 0)
 		{
@@ -910,7 +937,8 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 				return false;
 
 			if (!tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
-			                                      allowArray, typeOutput, afterNameOutput))
+			                                      allowArray, typeOutput, afterNameOutput,
+			                                      exposure))
 				return false;
 
 			addStringOutput(typeOutput, "<", StringOutMod_None, &typeInvocation);
@@ -924,7 +952,7 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 				// parameters anyways (as far as I can tell)
 				if (!tokenizedCTypeToString_Recursive(
 				        environment, context, tokens, startTemplateParameter,
-				        /*allowArray=*/false, typeOutput, afterNameOutput))
+				        /*allowArray=*/false, typeOutput, afterNameOutput, exposure))
 					return false;
 
 				if (!isLastArgument(tokens, startTemplateParameter, endTokenIndex))
@@ -932,6 +960,10 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 					                   &tokens[startTemplateParameter]);
 			}
 			addStringOutput(typeOutput, ">", StringOutMod_None, &typeInvocation);
+			RequiresCppFeature(
+				context.module,
+				findObjectDefinition(environment, context.definitionName->contents.c_str()),
+				exposure, &typeInvocation);
 		}
 		else
 		{
@@ -969,7 +1001,8 @@ bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
 				return false;
 
 			return tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
-			                                        allowArray, typeOutput, afterNameOutput);
+			                                        allowArray, typeOutput, afterNameOutput,
+			                                        exposure);
 		}
 		return true;
 	}
@@ -1150,9 +1183,11 @@ bool CStatementOutput(EvaluatorEnvironment& environment, const EvaluatorContext&
 					return false;
 				std::vector<StringOutput> typeOutput;
 				std::vector<StringOutput> typeAfterNameOutput;
-				if (!tokenizedCTypeToString_Recursive(environment, context, tokens, startTypeIndex,
-				                                      /*allowArray=*/false, typeOutput,
-				                                      typeAfterNameOutput))
+				if (!tokenizedCTypeToString_Recursive(
+				        environment, context, tokens, startTypeIndex,
+				        /*allowArray=*/false, typeOutput, typeAfterNameOutput,
+				        // Hard-coded because we always output to source
+				        RequiredFeatureExposure_ModuleLocal))
 					return false;
 
 				PushBackAll(output.source, typeOutput);
@@ -1444,25 +1479,57 @@ const char* RequiresFeatureToString(RequiredFeature requiredFeatures)
 		return "error: cannot describe RequiredFeature";
 }
 
-void RequiresFeature(Module* module, ObjectDefinition* objectDefinition,
-                     RequiredFeature requiredFeatures, const Token* blameToken)
+void RequiresCppFeature(Module* module, ObjectDefinition* objectDefinition,
+                        RequiredFeatureExposure exposure, const Token* blameToken)
 {
+	// Let's make it easy if you don't get the exposure right to still figure it is a compile time
+	// exposure only
+	bool isCompileTimeDefinition =
+	    objectDefinition && (objectDefinition->type == ObjectType_CompileTimeMacro ||
+	                         objectDefinition->type == ObjectType_CompileTimeGenerator ||
+	                         objectDefinition->type == ObjectType_CompileTimeFunction ||
+	                         objectDefinition->type == ObjectType_CompileTimeExternalGenerator);
+
+	RequiredFeature requiredFeatures = exposure == RequiredFeatureExposure_Global ?
+	                                       RequiredFeature_CppInDeclaration :
+	                                       RequiredFeature_CppInDefinition;
+
 	RequiredFeatureReason newRequiredReason;
 	newRequiredReason.blameToken = blameToken;
 	newRequiredReason.requiredFeatures = requiredFeatures;
 
-	module->requiredFeatures =
-	    (RequiredFeature)((int)module->requiredFeatures | (int)requiredFeatures);
-	module->requiredFeaturesReasons.push_back(newRequiredReason);
+	if (exposure != RequiredFeatureExposure_Comptime && !isCompileTimeDefinition)
+	{
+		module->requiredFeatures =
+			(RequiredFeature)((int)module->requiredFeatures | (int)requiredFeatures);
+		module->requiredFeaturesReasons.push_back(newRequiredReason);
 
-	if (objectDefinition->type != ObjectType_CompileTimeMacro &&
-	    objectDefinition->type != ObjectType_CompileTimeGenerator &&
-	    objectDefinition->type != ObjectType_CompileTimeFunction)
+		if (objectDefinition && logging.requiredFeaturesReasons)
+		{
+			const char* objectTypes[] = {"PseudoObject",
+			                             "Function",
+			                             "Variable",
+			                             "CompileTimeMacro",
+			                             "CompileTimeGenerator",
+			                             "CompileTimeFunction",
+			                             "CompileTimeExternalGenerator"};
+			NoteAtTokenf(*blameToken, "required feature %s on object definition %s of type %s",
+			             RequiresFeatureToString(requiredFeatures), objectDefinition->name.c_str(),
+			             objectTypes[objectDefinition->type]);
+		}
+	}
+
+	if (objectDefinition)
 	{
 		objectDefinition->requiredFeatures =
 		    (RequiredFeature)((int)objectDefinition->requiredFeatures | (int)requiredFeatures);
 		objectDefinition->requiredFeaturesReasons.push_back(newRequiredReason);
 	}
-
-	// NoteAtTokenf(*blameToken, "required feature %s", RequiresFeatureToString(requiredFeatures));
+	else
+	{
+		NoteAtTokenf(
+		    *blameToken,
+		    "required feature %s but no object definition can tell us we are in compile-time",
+		    RequiresFeatureToString(requiredFeatures));
+	}
 }

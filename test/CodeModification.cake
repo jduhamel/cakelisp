@@ -1,5 +1,5 @@
 (import "runtime/ComptimeHelpers.cake")
-(c-import "stdio.h")
+(c-import "<stdio.h>" "<stdbool.h>")
 
 (defun secret-print ()
   (if false

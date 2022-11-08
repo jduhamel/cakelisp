@@ -784,10 +784,20 @@ bool moduleManagerWriteGeneratedOutput(ModuleManager& manager)
 		outputSettings.heading = &header;
 		outputSettings.footer = &footer;
 
+		if (logging.requiredFeaturesReasons)
+		{
+			for (const RequiredFeatureReason& reason : module->requiredFeaturesReasons)
+			{
+				NoteAtTokenf(*reason.blameToken, "Module %s requires C++ because %s",
+				             module->filename, RequiresFeatureToString(reason.requiredFeatures));
+			}
+		}
+
 		char sourceOutputName[MAX_PATH_LENGTH] = {0};
-		const char* extension = "cpp";
-		// TODO: Enable C vs C++
-		// module->requiredFeatures & RequiredFeature_CppInDefinition ? "cpp" : "c";
+		const char* extension = module->requiredFeatures & (RequiredFeature_CppInDefinition |
+		                                                    RequiredFeature_CppInDeclaration) ?
+		                            "cpp" :
+		                            "c";
 		if (!outputFilenameFromSourceFilename(manager.buildOutputDir.c_str(),
 		                                      outputSettings.sourceCakelispFilename, extension,
 		                                      sourceOutputName, sizeof(sourceOutputName)))
@@ -1223,11 +1233,25 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 		                               debugSymbolsName);
 
 		char buildTimeBuildExecutable[MAX_PATH_LENGTH] = {0};
-		if (!resolveExecutablePath(buildCommand.fileToExecute.c_str(), buildTimeBuildExecutable,
-		                           sizeof(buildTimeBuildExecutable)))
+		if (StrCompareIgnoreCase(buildCommand.fileToExecute.c_str(), "g++") == 0 &&
+		    (object->sourceFilename.c_str())[object->sourceFilename.size() - 2] == '.')
 		{
-			buildObjectsFree(buildObjects);
-			return false;
+			// TODO HACK!
+			if (!resolveExecutablePath("gcc", buildTimeBuildExecutable,
+			                           sizeof(buildTimeBuildExecutable)))
+			{
+				buildObjectsFree(buildObjects);
+				return false;
+			}
+		}
+		else
+		{
+			if (!resolveExecutablePath(buildCommand.fileToExecute.c_str(), buildTimeBuildExecutable,
+			                           sizeof(buildTimeBuildExecutable)))
+			{
+				buildObjectsFree(buildObjects);
+				return false;
+			}
 		}
 
 		ProcessCommandInput buildTimeInputs[] = {

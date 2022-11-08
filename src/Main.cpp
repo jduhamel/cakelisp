@@ -142,6 +142,9 @@ int main(int numArguments, char* arguments[])
 	     "Output in the source file when scopes are entered and exited. This will cause rebuilds "
 	     "every time, but can be helpful in deep debugging. Useful when debugging unexpected "
 	     "behavior of scope-related operations like defer"},
+	    {"--verbose-required-features-reasons", &logging.requiredFeaturesReasons,
+	     "Output what token caused a module to require a feature like C++ rather than being "
+	     "straight C"},
 	};
 
 	if (numArguments == 1)

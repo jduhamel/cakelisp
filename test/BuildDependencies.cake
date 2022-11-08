@@ -11,7 +11,7 @@
   (fprintf stderr "%d\n" (my-fun))
   (return 0))
 
-(add-c-build-dependency "Test.cpp")
+(add-c-build-dependency "Test.c")
 
 (add-c-search-directory-module "test/dir")
 

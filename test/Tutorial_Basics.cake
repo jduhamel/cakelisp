@@ -1,7 +1,7 @@
 (add-cakelisp-search-directory "runtime")
 (import "ComptimeHelpers.cake" "CHelpers.cake")
 
-(c-import "<stdio.h>" "<string.h>")
+(c-import "<stdio.h>" "<string.h>" "<stdbool.h>")
 
 (defmacro hello-from-macro ()
   (tokenize-push output

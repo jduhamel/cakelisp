@@ -83,7 +83,8 @@
                                     startTokenIndex
                                     end-signature-index
                                     true ;; Output to source
-                                    false) ;; Output to header
+                                    false ;; Output to header
+                                    RequiredFeatureExposure_ModuleLocal)
     (return false))
 
   (addStringOutput (path output . source) (field name-token contents)
@@ -95,7 +96,8 @@
   (unless (outputFunctionArguments environment context tokens output arguments
                                    is-variadic-index
                                    true ;; Output to source
-                                   false) ;; Output to header
+                                   false ;; Output to header
+                                   RequiredFeatureExposure_ModuleLocal)
     (return false))
 
   (addLangTokenOutput (field output source) StringOutMod_CloseParen (addr signature-token))

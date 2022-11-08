@@ -36,10 +36,11 @@
 (defgenerator defclass (name symbol &rest class-body (index any))
   (var is-local bool false) ;; TODO
 
-  (RequiresFeature
+  (RequiresCppFeature
    (field context module)
    (findObjectDefinition environment (call-on c_str (path context . definitionName > contents)))
-   RequiredFeature_Cpp name)
+   (? is-local RequiredFeatureExposure_ModuleLocal RequiredFeatureExposure_Global)
+   name)
 
   ;; Class declaration
   (var class-declaration-output (ref (template (in std vector) StringOutput))

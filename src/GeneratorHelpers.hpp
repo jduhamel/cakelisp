@@ -118,19 +118,22 @@ CAKELISP_API bool outputFunctionReturnType(EvaluatorEnvironment& environment,
                                            const std::vector<Token>& tokens,
                                            GeneratorOutput& output, int returnTypeStart,
                                            int startInvocationIndex, int endArgsIndex,
-                                           bool outputSource, bool outputHeader);
+                                           bool outputSource, bool outputHeader,
+                                           RequiredFeatureExposure exposure);
 CAKELISP_API bool outputFunctionArguments(EvaluatorEnvironment& environment,
                                           const EvaluatorContext& context,
                                           const std::vector<Token>& tokens, GeneratorOutput& output,
                                           const std::vector<FunctionArgumentTokens>& arguments,
-                                          int isVariadicIndex, bool outputSource,
-                                          bool outputHeader);
+                                          int isVariadicIndex, bool outputSource, bool outputHeader,
+                                          RequiredFeatureExposure exposure);
 
+// The exposure determines how the type is going to be used, which helps inform RequiredFeatures
 bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
                                       const EvaluatorContext& context,
                                       const std::vector<Token>& tokens, int startTokenIndex,
                                       bool allowArray, std::vector<StringOutput>& typeOutput,
-                                      std::vector<StringOutput>& afterNameOutput);
+                                      std::vector<StringOutput>& afterNameOutput,
+                                      RequiredFeatureExposure exposure);
 
 bool CompileTimeFunctionSignatureMatches(EvaluatorEnvironment& environment, const Token& errorToken,
                                          const char* compileTimeFunctionName,
@@ -187,6 +190,8 @@ CAKELISP_API bool TokenizePushExecute(EvaluatorEnvironment& environment, const c
                                       uint32_t tokensCrc, TokenizePushContext* spliceContext,
                                       std::vector<Token>& output);
 
+CAKELISP_API const char* RequiresFeatureToString(RequiredFeature requiredFeatures);
+
 struct Module;
-CAKELISP_API void RequiresFeature(Module* module, ObjectDefinition* objectDefinition,
-                                  RequiredFeature requiredFeatures, const Token* blameToken);
+CAKELISP_API void RequiresCppFeature(Module* module, ObjectDefinition* objectDefinition,
+                                     RequiredFeatureExposure exposure, const Token* blameToken);

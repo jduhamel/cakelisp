@@ -1,5 +1,6 @@
-(c-import "<stdio.h>" "<string>" "<assert.h>"
-          &with-decls "<stdio.h>") ;; FILE* TODO: How can I remove this from header?
+(c-import "<stdio.h>" "<string.h>" "<assert.h>"
+          ;; FILE*, bool TODO: How can I remove this from header?
+          &with-decls "<stdio.h>" "<stdbool.h>")
 
 (c-preprocessor-define MAX_PATH_LENGTH 256)
 

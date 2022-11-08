@@ -1,2 +1,2 @@
-(defun-nodecl unused-proc (&return bool)
-  (return false))
+(defun-nodecl unused-proc (&return int)
+  (return 0))

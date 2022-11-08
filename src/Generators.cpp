@@ -1028,10 +1028,14 @@ bool DefunGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& c
 		addStringOutput(functionOutput->source, "static", StringOutMod_SpaceAfter,
 		                &tokens[startTokenIndex]);
 
+	RequiredFeatureExposure exposure =
+	    shouldDeclare ? RequiredFeatureExposure_Global : RequiredFeatureExposure_ModuleLocal;
+	if (isCompileTime)
+		exposure = RequiredFeatureExposure_Comptime;
 	int endArgsIndex = FindCloseParenTokenIndex(tokens, argsIndex);
 	if (!outputFunctionReturnType(environment, context, tokens, *functionOutput, returnTypeStart,
 	                              startTokenIndex, endArgsIndex,
-	                              /*outputSource=*/true, /*outputHeader=*/shouldDeclare))
+	                              /*outputSource=*/true, /*outputHeader=*/shouldDeclare, exposure))
 		return false;
 
 	addStringOutput(functionOutput->source, nameToken.contents, StringOutMod_ConvertFunctionName,
@@ -1047,7 +1051,7 @@ bool DefunGenerator(EvaluatorEnvironment& environment, const EvaluatorContext& c
 	if (!outputFunctionArguments(environment, context, tokens, *functionOutput, arguments,
 	                             isVariadicIndex,
 	                             /*outputSource=*/true,
-	                             /*outputHeader=*/shouldDeclare))
+	                             /*outputHeader=*/shouldDeclare, exposure))
 		return false;
 
 	std::vector<FunctionArgumentMetadata> argumentsMetadata;
@@ -1146,9 +1150,10 @@ bool DefFunctionSignatureGenerator(EvaluatorEnvironment& environment,
 	addStringOutput(outputDest, "typedef", StringOutMod_SpaceAfter, &tokens[startTokenIndex]);
 
 	int endArgsIndex = FindCloseParenTokenIndex(tokens, argsIndex);
-	if (!outputFunctionReturnType(environment, context, tokens, output, returnTypeStart,
-	                              startTokenIndex, endArgsIndex,
-	                              /*outputSource=*/isModuleLocal, /*outputHeader=*/!isModuleLocal))
+	if (!outputFunctionReturnType(
+	        environment, context, tokens, output, returnTypeStart, startTokenIndex, endArgsIndex,
+	        /*outputSource=*/isModuleLocal, /*outputHeader=*/!isModuleLocal,
+	        isModuleLocal ? RequiredFeatureExposure_ModuleLocal : RequiredFeatureExposure_Global))
 		return false;
 
 	// Name
@@ -1159,9 +1164,11 @@ bool DefFunctionSignatureGenerator(EvaluatorEnvironment& environment,
 
 	addLangTokenOutput(outputDest, StringOutMod_OpenParen, &argsStart);
 
-	if (!outputFunctionArguments(environment, context, tokens, output, arguments, isVariadicIndex,
-	                             /*outputSource=*/isModuleLocal,
-	                             /*outputHeader=*/!isModuleLocal))
+	if (!outputFunctionArguments(
+	        environment, context, tokens, output, arguments, isVariadicIndex,
+	        /*outputSource=*/isModuleLocal,
+	        /*outputHeader=*/!isModuleLocal,
+	        isModuleLocal ? RequiredFeatureExposure_ModuleLocal : RequiredFeatureExposure_Global))
 		return false;
 
 	addLangTokenOutput(outputDest, StringOutMod_CloseParen, &tokens[endArgsIndex]);
@@ -1244,11 +1251,15 @@ bool VariableDeclarationGenerator(EvaluatorEnvironment& environment,
 	if (typeIndex == -1)
 		return false;
 
+	RequiredFeatureExposure requiredFeatureExposure =
+	    isGlobal ? RequiredFeatureExposure_Global : RequiredFeatureExposure_ModuleLocal;
+
 	std::vector<StringOutput> typeOutput;
 	std::vector<StringOutput> typeAfterNameOutput;
 	// Arrays cannot be return types, they must be * instead
 	if (!tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex,
-	                                      /*allowArray=*/true, typeOutput, typeAfterNameOutput))
+	                                      /*allowArray=*/true, typeOutput, typeAfterNameOutput,
+	                                      requiredFeatureExposure))
 		return false;
 
 	// At this point, we probably have a valid variable. Start outputting
@@ -2042,7 +2053,9 @@ bool DefStructGenerator(EvaluatorEnvironment& environment, const EvaluatorContex
 			// Arrays cannot be return types, they must be * instead
 			if (!tokenizedCTypeToString_Recursive(
 			        environment, context, tokens, currentMember.typeStart,
-			        /*allowArray=*/true, typeOutput, typeAfterNameOutput))
+			        /*allowArray=*/true, typeOutput, typeAfterNameOutput,
+			        isGlobal ? RequiredFeatureExposure_Global :
+			                   RequiredFeatureExposure_ModuleLocal))
 				return false;
 
 			// At this point, we probably have a valid variable. Start outputting
@@ -2339,8 +2352,9 @@ static bool DefTypeAliasGenerator(EvaluatorEnvironment& environment,
 
 	std::vector<StringOutput> typeOutput;
 	std::vector<StringOutput> typeAfterNameOutput;
-	if (!(tokenizedCTypeToString_Recursive(environment, context, tokens, typeIndex, true,
-	                                       typeOutput, typeAfterNameOutput)))
+	if (!(tokenizedCTypeToString_Recursive(
+	        environment, context, tokens, typeIndex, true, typeOutput, typeAfterNameOutput,
+	        isGlobal ? RequiredFeatureExposure_Global : RequiredFeatureExposure_ModuleLocal)))
 	{
 		return false;
 	}
@@ -3115,10 +3129,11 @@ bool CStatementGenerator(EvaluatorEnvironment& environment, const EvaluatorConte
 		if (nameToken.contents.compare(statementOperators[i].name) == 0)
 		{
 			if (statementOperators[i].requiresFeature != RequiredFeature_None)
-				RequiresFeature(
+				RequiresCppFeature(
 				    context.module,
 				    findObjectDefinition(environment, context.definitionName->contents.c_str()),
-				    statementOperators[i].requiresFeature, &nameToken);
+				    // CStatementOutput always outputs to source only
+				    RequiredFeatureExposure_ModuleLocal, &nameToken);
 
 			return CStatementOutput(environment, context, tokens, startTokenIndex,
 			                        statementOperators[i].operations,

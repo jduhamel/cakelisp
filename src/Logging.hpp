@@ -31,6 +31,8 @@ struct LoggingSettings
 	bool includeScanning;
 	bool strictIncludes;
 	bool optionAdding;
+
+	bool requiredFeaturesReasons;
 };
 
 extern CAKELISP_API LoggingSettings logging;

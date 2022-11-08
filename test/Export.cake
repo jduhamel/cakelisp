@@ -4,6 +4,6 @@
 
 (export
  (declare-extern-function test ())
- (add-cpp-build-dependency "dir/Test.cpp"))
+ (add-c-build-dependency "dir/Test.c"))
 
 (set-cakelisp-option executable-output "test/Export")

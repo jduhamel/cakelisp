@@ -5,4 +5,5 @@
 
 ./bin/cakelisp --list-built-ins-details || exit $?
 
-./bin/cakelisp --verbose-build-reasons runtime/Config_Linux.cake test/RunTests.cake || exit $?
+./bin/cakelisp --verbose-build-reasons --verbose-required-features-reasons \
+			   runtime/Config_Linux.cake test/RunTests.cake || exit $?

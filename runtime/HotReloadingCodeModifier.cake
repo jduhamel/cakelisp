@@ -40,7 +40,7 @@
 ;; TODO: Make a context variable for preventing environment changes during &decls-only?
 (comptime-define-symbol 'No-Hot-Reload-Options)
 
-(import "ComptimeHelpers.cake")
+(import "ComptimeHelpers.cake" "CHelpers.cake")
 
 ;; This is redefined by make-code-hot-reloadable
 (defun hot-reload-initialize-state ())
@@ -314,7 +314,6 @@
       (return false)))
 
   ;; Create global initializer function to initialize all pointers on load/reload
-  ;; Import all modules so that their initializers are exposed
   ;; Use this module to house the initializer. Putting it in some other module could cause unnecessary
   ;; rebuilds if different subsets of files are built. If it is housed here, only this file will
   ;; need to be recompiled
@@ -325,21 +324,11 @@
 
    (var invocations (template (in std vector) Token))
    (for-in initializer-name (ref Token) initializer-names
-     (tokenize-push invocations ((token-splice-addr initializer-name))))
-
-   (var imports (template (in std vector) Token))
-   (for-in module-to-import (ref (template std::pair (const (in std string)) Token)) modules-to-import
-     (var module-name Token (field module-to-import second))
-     (set (field module-name contents) (field module-to-import first))
-     (set (field module-name type) TokenType_String)
-     (tokenize-push imports (import (token-splice-addr module-name))))
-
-   (when verbose (prettyPrintTokens imports))
+     (tokenize-push invocations
+       (declare-extern-function (token-splice-addr initializer-name) ())
+       (call (token-splice-addr initializer-name))))
 
    (tokenize-push (deref new-initializer-def)
-     ;; TODO: This is a hack. Make sure imports work by adding working dir as search
-     (add-c-search-directory-module ".")
-     (token-splice-array imports)
      (defun hot-reload-initialize-state ()
        (token-splice-array invocations)))
 

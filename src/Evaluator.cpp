@@ -505,8 +505,8 @@ int EvaluateGenerate_Recursive(EvaluatorEnvironment& environment, const Evaluato
 					// automatically with null
 					if (token.contents.compare("null") == 0)
 					{
-						// TODO: C vs. C++
-						addStringOutput(output.source, "nullptr", StringOutMod_None, &token);
+						// It's easier to just set them all to NULL to be compatible with C
+						addStringOutput(output.source, "NULL", StringOutMod_None, &token);
 						break;
 					}
 
