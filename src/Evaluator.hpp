@@ -356,6 +356,12 @@ struct EvaluatorEnvironment
 	ObjectDefinitionMap definitions;
 	ObjectReferencePoolMap referencePools;
 
+	// Generators and macros can ask to defer their reference resolution in cases where they are
+	// still waiting for another macro to run first
+	std::vector<std::string> deferredResolutions;
+	// This is needed by ReevaluateResolveReferences to know when to skip over deferred references
+	int numResolutionsToDefer;
+
 	// Used to ensure unique filenames for compile-time artifacts
 	int nextFreeBuildId;
 	// Ensure unique macro variable names, for example
@@ -473,6 +479,17 @@ CAKELISP_API bool ClearAndEvaluateAtSplicePoint(EvaluatorEnvironment& environmen
 
 // Returns whether all references were resolved successfully
 bool EvaluateResolveReferences(EvaluatorEnvironment& environment);
+
+// The reference cannot be resolved because the resolver doesn't have some dependency satisfied. For
+// example, you require the definition be provided to resolve. This function can be called in a
+// generator or macro to essentially say "try again after some more references have been resolved
+// elsewhere". This will not cause infinite loops because the evaluator will simply fail if there
+// are still deferred resolutions and no further progress has been made.
+// Returns whether the reference could be deferred. You can return this result directly from your
+// macro to have proper behavior, because deferred macros should return true to properly be
+// deferred.
+CAKELISP_API bool DeferCurrentReferenceResolution(EvaluatorEnvironment& environment,
+                                                  const char* resolverName);
 
 const char* evaluatorScopeToString(EvaluatorScope expectedScope);
 
