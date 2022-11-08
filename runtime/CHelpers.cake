@@ -202,6 +202,21 @@
 
   (return true))
 
+(defgenerator extern-c (&rest body (arg-index any))
+  (var extern-c-wrapper (const (array CStatementOperation))
+    (array
+     (array Keyword "#ifdef __cplusplus\n" -1)
+     (array Keyword "extern \"C\"" -1)
+     (array OpenBlock null -1)
+     (array Keyword "#endif\n" -1)
+     (array Body null body)
+     (array Keyword "#ifdef __cplusplus\n" -1)
+     (array CloseBlock null -1)
+     (array Keyword "#endif\n" -1)))
+  (return (CStatementOutput environment context tokens startTokenIndex
+                            extern-c-wrapper (array-size extern-c-wrapper)
+                            output)))
+
 ;; TODO: Better way to handle global vs. local
 (defun-comptime defenum-internal (environment (ref EvaluatorEnvironment)
                                   context (ref (const EvaluatorContext))
