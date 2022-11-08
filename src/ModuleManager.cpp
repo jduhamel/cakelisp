@@ -273,6 +273,20 @@ void moduleManagerInitialize(ModuleManager& manager)
 		    {ProcessCommandArgumentType_IncludeSearchDirs, EmptyString},
 		    {ProcessCommandArgumentType_AdditionalOptions, EmptyString}};
 
+		manager.environment.buildTimeBuildCommandC.fileToExecute = defaultCompilerLinkerC;
+		manager.environment.buildTimeBuildCommandC.arguments = {
+		    {ProcessCommandArgumentType_String, "-g"},
+		    {ProcessCommandArgumentType_String, "-c"},
+		    {ProcessCommandArgumentType_SourceInput, EmptyString},
+		    {ProcessCommandArgumentType_String, "-o"},
+		    {ProcessCommandArgumentType_ObjectOutput, EmptyString},
+		    // Probably unnecessary to make the user's code position-independent, but it does make
+		    // hotreloading a bit easier to try out
+			{ProcessCommandArgumentType_String, "-fPIC"},
+			{ProcessCommandArgumentType_String, "-std=c99"},
+		    {ProcessCommandArgumentType_IncludeSearchDirs, EmptyString},
+		    {ProcessCommandArgumentType_AdditionalOptions, EmptyString}};
+
 		manager.environment.buildTimeLinkCommand.fileToExecute = defaultCompilerLinker;
 		manager.environment.buildTimeLinkCommand.arguments = {
 		    {ProcessCommandArgumentType_AdditionalOptions, EmptyString},
@@ -294,6 +308,7 @@ void moduleManagerInitialize(ModuleManager& manager)
 		// G++ by default, because most distros seem to have it over clang
 		const char* defaultCompilerLinker = "g++";  // 9s
 		// const char* defaultCompilerLinker = "clang++"; // 11.9s
+		const char* defaultCompilerLinkerC = "gcc";
 
 		manager.environment.compileTimeBuildCommand.fileToExecute = defaultCompilerLinker;
 		manager.environment.compileTimeBuildCommand.arguments = {
@@ -337,6 +352,20 @@ void moduleManagerInitialize(ModuleManager& manager)
 		    // Probably unnecessary to make the user's code position-independent, but it does make
 		    // hotreloading a bit easier to try out
 		    {ProcessCommandArgumentType_String, "-fPIC"},
+		    {ProcessCommandArgumentType_IncludeSearchDirs, EmptyString},
+		    {ProcessCommandArgumentType_AdditionalOptions, EmptyString}};
+
+		manager.environment.buildTimeBuildCommandC.fileToExecute = defaultCompilerLinkerC;
+		manager.environment.buildTimeBuildCommandC.arguments = {
+		    {ProcessCommandArgumentType_String, "-g"},
+		    {ProcessCommandArgumentType_String, "-c"},
+		    {ProcessCommandArgumentType_SourceInput, EmptyString},
+		    {ProcessCommandArgumentType_String, "-o"},
+		    {ProcessCommandArgumentType_ObjectOutput, EmptyString},
+		    // Probably unnecessary to make the user's code position-independent, but it does make
+		    // hotreloading a bit easier to try out
+			{ProcessCommandArgumentType_String, "-fPIC"},
+			{ProcessCommandArgumentType_String, "-std=c99"},
 		    {ProcessCommandArgumentType_IncludeSearchDirs, EmptyString},
 		    {ProcessCommandArgumentType_AdditionalOptions, EmptyString}};
 
@@ -794,10 +823,7 @@ bool moduleManagerWriteGeneratedOutput(ModuleManager& manager)
 		}
 
 		char sourceOutputName[MAX_PATH_LENGTH] = {0};
-		const char* extension = module->requiredFeatures & (RequiredFeature_CppInDefinition |
-		                                                    RequiredFeature_CppInDeclaration) ?
-		                            "cpp" :
-		                            "c";
+		const char* extension = module->requiredFeatures & RequiredFeature_Cpp ? "cpp" : "c";
 		if (!outputFilenameFromSourceFilename(manager.buildOutputDir.c_str(),
 		                                      outputSettings.sourceCakelispFilename, extension,
 		                                      sourceOutputName, sizeof(sourceOutputName)))
@@ -978,6 +1004,16 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 
 			if (buildCommandValid)
 				buildCommandOverride = &module->buildTimeBuildCommand;
+		}
+
+		// The module didn't override its command. Let's check if it can use the C compiler instead
+		if (!buildCommandOverride)
+		{
+			if (!(module->requiredFeatures & RequiredFeature_Cpp) &&
+			    !manager.environment.buildTimeBuildCommandC.fileToExecute.empty())
+			{
+				buildCommandOverride = &manager.environment.buildTimeBuildCommandC;
+			}
 		}
 
 		if (logging.buildProcess)
@@ -1233,25 +1269,11 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 		                               debugSymbolsName);
 
 		char buildTimeBuildExecutable[MAX_PATH_LENGTH] = {0};
-		if (StrCompareIgnoreCase(buildCommand.fileToExecute.c_str(), "g++") == 0 &&
-		    (object->sourceFilename.c_str())[object->sourceFilename.size() - 2] == '.')
+		if (!resolveExecutablePath(buildCommand.fileToExecute.c_str(), buildTimeBuildExecutable,
+		                           sizeof(buildTimeBuildExecutable)))
 		{
-			// TODO HACK!
-			if (!resolveExecutablePath("gcc", buildTimeBuildExecutable,
-			                           sizeof(buildTimeBuildExecutable)))
-			{
-				buildObjectsFree(buildObjects);
-				return false;
-			}
-		}
-		else
-		{
-			if (!resolveExecutablePath(buildCommand.fileToExecute.c_str(), buildTimeBuildExecutable,
-			                           sizeof(buildTimeBuildExecutable)))
-			{
-				buildObjectsFree(buildObjects);
-				return false;
-			}
+			buildObjectsFree(buildObjects);
+			return false;
 		}
 
 		ProcessCommandInput buildTimeInputs[] = {

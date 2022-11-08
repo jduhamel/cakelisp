@@ -433,6 +433,8 @@ struct EvaluatorEnvironment
 	ProcessCommand compileTimeBuildCommand;
 	ProcessCommand compileTimeLinkCommand;
 	ProcessCommand buildTimeBuildCommand;
+	// For C only builds, we may need to use a different compiler
+	ProcessCommand buildTimeBuildCommandC;
 	ProcessCommand buildTimeLinkCommand;
 	ProcessCommand compileTimeHeaderPrecompilerCommand;
 

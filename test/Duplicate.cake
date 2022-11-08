@@ -1,4 +1,4 @@
-(add-c-build-dependency "Test.cpp")
+(add-c-build-dependency "Test.c")
 
 (defun my-fun (&return int)
   (return 0))

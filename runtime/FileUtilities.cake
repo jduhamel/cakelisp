@@ -2,10 +2,11 @@
           ;; FILE*, bool TODO: How can I remove this from header?
           &with-decls "<stdio.h>" "<stdbool.h>")
 
-(c-preprocessor-define MAX_PATH_LENGTH 256)
+(c-preprocessor-define MAX_PATH_LENGTH 1024)
 
 (comptime-cond
  ('Unix
+  (c-preprocessor-define __USE_XOPEN_EXTENDED) ;; for realpath to return (addr char), strdup
   (c-import "<stdlib.h>" "<libgen.h>" "<string.h>"))
  ('Windows
   (c-preprocessor-define WIN32_LEAN_AND_MEAN)
@@ -66,6 +67,7 @@
 (defun get-directory-from-path (path (addr (const char)) bufferOut (addr char) bufferSize int)
   (comptime-cond
    ('Unix
+    (declare-extern-function strdup (str (addr (const char)) &return (addr char)))
 	(var pathCopy (addr char) (string-duplicate path))
 	(var dirName (addr (const char)) (dirname pathCopy))
 	(safe-string-print bufferOut bufferSize "%s" dirName)
