@@ -357,6 +357,34 @@
      (array KeywordNoSpace "\n" -1)))
   (return (c-statement-out define-statement)))
 
+(defgenerator if-c-preprocessor (conditional (arg-index array)
+                                   true-block (arg-index any)
+                                   &optional false-block (arg-index any))
+  (if (!= -1 false-block)
+      (scope
+       (var statement (const (array CStatementOperation))
+         (array
+          (array Keyword "#if" -1)
+          (array Expression null conditional)
+          (array KeywordNoSpace "\n" -1)
+          (array Statement null true-block)
+          (array KeywordNoSpace "#else" -1)
+          (array KeywordNoSpace "\n" -1)
+          (array Statement null false-block)
+          (array KeywordNoSpace "#endif" -1)
+          (array KeywordNoSpace "\n" -1)))
+       (return (c-statement-out statement)))
+      (scope
+       (var statement (const (array CStatementOperation))
+         (array
+          (array Keyword "#if" -1)
+          (array Expression null conditional)
+          (array KeywordNoSpace "\n" -1)
+          (array Statement null true-block)
+          (array KeywordNoSpace "#endif" -1)
+          (array KeywordNoSpace "\n" -1)))
+       (return (c-statement-out statement)))))
+
 (defgenerator if-c-preprocessor-defined (preprocessor-symbol (arg-index symbol)
                                          true-block (arg-index any)
                                          &optional false-block (arg-index any))
