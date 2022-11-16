@@ -1007,12 +1007,14 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 		}
 
 		// The module didn't override its command. Let's check if it can use the C compiler instead
+		bool isUsingCCompiler = false;
 		if (!buildCommandOverride)
 		{
 			if (!(module->requiredFeatures & RequiredFeature_Cpp) &&
 			    !manager.environment.buildTimeBuildCommandC.fileToExecute.empty())
 			{
 				buildCommandOverride = &manager.environment.buildTimeBuildCommandC;
+				isUsingCCompiler = true;
 			}
 		}
 
@@ -1064,8 +1066,19 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 
 				newBuildObject->filename = buildObjectName;
 
+				ProcessCommand* moduleBuildCommandOverride = buildCommandOverride;
+				bool isDependencyCpp = strcmp(newBuildObject->sourceFilename.c_str() +
+				                              (newBuildObject->sourceFilename.size() - 3),
+				                          "cpp") == 0;
+				if (isUsingCCompiler && isDependencyCpp)
+				{
+					// Use the default C++ compiler
+					// This only occurs if the module did not override its compiler explicitly
+					moduleBuildCommandOverride = nullptr;
+				}
 				// This is a bit weird to automatically use the parent module's build command
-				copyModuleBuildOptionsToBuildObject(module, buildCommandOverride, newBuildObject);
+				copyModuleBuildOptionsToBuildObject(module, moduleBuildCommandOverride,
+				                                    newBuildObject);
 
 				buildObjects.push_back(newBuildObject);
 			}
