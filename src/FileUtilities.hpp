@@ -3,6 +3,9 @@
 #include "Exporting.hpp"
 #include "FileTypes.hpp"
 
+extern "C"
+{
+
 // Returns zero if the file doesn't exist, or there was some other error
 CAKELISP_API FileModifyTime fileGetLastModificationTime(const char* filename);
 
@@ -48,3 +51,5 @@ CAKELISP_API void makeBackslashFilename(char* buffer, int bufferSize, const char
 CAKELISP_API bool changeExtension(char* buffer, const char* newExtension);
 
 CAKELISP_API uint32_t getFileCrc32(const char* filename);
+
+}
