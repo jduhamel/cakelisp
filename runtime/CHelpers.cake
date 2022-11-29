@@ -573,3 +573,21 @@
   (tokenize-push output
     (__alignof__ (token-splice type-or-field)))
   (return true))
+
+;; The current file, as a string
+(defmacro this-file ()
+  (var filename-token Token (at startTokenIndex tokens))
+  (set (field filename-token type) TokenType_String)
+  (token-contents-snprintf filename-token "%s" (field filename-token source))
+  (tokenize-push output
+    (token-splice-addr filename-token))
+  (return true))
+
+;; The current line, as a symbol
+(defmacro this-line ()
+  (var line-token Token (at startTokenIndex tokens))
+  (set (field line-token type) TokenType_Symbol)
+  (token-contents-snprintf line-token "%d" (field line-token lineNumber))
+  (tokenize-push output
+    (token-splice-addr line-token))
+  (return true))
