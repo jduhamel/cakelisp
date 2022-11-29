@@ -87,6 +87,7 @@ enum ObjectType
 	// Built at compile time, but not hooked up as a regular generator. These are hacked in and
 	// late-resolved. TODO Clean up...
 	ObjectType_CompileTimeExternalGenerator,
+	ObjectType_CompileTimeExternalMacro,
 };
 
 enum ObjectReferenceGuessState

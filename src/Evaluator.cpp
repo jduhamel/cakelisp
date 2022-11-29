@@ -2362,7 +2362,7 @@ bool registerEvaluateMacro(EvaluatorEnvironment& environment, const char* macroN
 		newDefinition.name = macroName;
 		newDefinition.definitionInvocation = blameToken;
 		// Make sure these don't get built
-		newDefinition.type = ObjectType_CompileTimeMacro;
+		newDefinition.type = ObjectType_CompileTimeExternalMacro;
 		if (!addObjectDefinition(environment, newDefinition))
 		{
 			Logf("error: could not add %s as a definition\n.", macroName);
