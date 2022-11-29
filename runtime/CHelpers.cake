@@ -574,6 +574,10 @@
     (__alignof__ (token-splice type-or-field)))
   (return true))
 
+;;
+;; Helpers for meta stuff, e.g. the file and line number of the token itself
+;;
+
 ;; The current file, as a string
 (defmacro this-file ()
   (var filename-token Token (at startTokenIndex tokens))
@@ -590,4 +594,48 @@
   (token-contents-snprintf line-token "%d" (field line-token lineNumber))
   (tokenize-push output
     (token-splice-addr line-token))
+  (return true))
+
+;; This tacks the file and line on as the last two arguments to the function.
+;; define-forward-file-line-macro is used to know the association between this macro's invocation
+;; and the actual desired function to call.
+(defmacro call-function-with-file-line (&optional &rest arguments any)
+  (when (and arguments
+             (= 0 (call-on compare (path arguments > contents) "for-dependencies")))
+    (return true))
+  (get-or-create-comptime-var c-forward-macro-functions
+                              (template (in std unordered_map) (in std string) (in std string)))
+  ;; We spoofed the macro call, now we need to rename the function
+  (var function-to-call Token (at (+ 1 startTokenIndex) tokens))
+  (set (field function-to-call contents)
+       (at (field function-to-call contents) (deref c-forward-macro-functions)))
+  (var filename-token Token (at startTokenIndex tokens))
+  (set (field filename-token type) TokenType_String)
+  (token-contents-snprintf filename-token "%s" (field filename-token source))
+  (var line-token Token (at startTokenIndex tokens))
+  (set (field line-token type) TokenType_Symbol)
+  (token-contents-snprintf line-token "%d" (field line-token lineNumber))
+  (tokenize-push output
+    (call (token-splice-addr function-to-call)
+          (token-splice-rest arguments tokens)
+          (token-splice-addr filename-token) (token-splice-addr line-token)))
+  (return true))
+
+;; Upon finding macro-name, call function-to-call in its place with the same arguments, but with
+;; the file and line of the invocation tacked on the end of the arguments list.
+(defmacro define-forward-file-line-macro (macro-name symbol function-to-call symbol)
+  ;; Make sure the function exists before we can get built so we can reference it
+  (call-function-with-file-line "for-dependencies")
+  (declare-extern-function
+   call-function-with-file-line
+   (environment (ref EvaluatorEnvironment) context (ref (const EvaluatorContext))
+    tokens (ref (const (template (in std vector) Token))) startTokenIndex int
+    output (ref (template (in std vector) Token))
+    &return bool))
+  (get-or-create-comptime-var c-forward-macro-functions
+                              (template (in std unordered_map) (in std string) (in std string)))
+  (set (at (path macro-name > contents) (deref c-forward-macro-functions))
+       (path function-to-call > contents))
+  (registerEvaluateMacro environment (call-on c_str (path macro-name > contents))
+                         call-function-with-file-line macro-name)
   (return true))
