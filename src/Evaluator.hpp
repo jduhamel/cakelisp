@@ -506,6 +506,9 @@ CAKELISP_API bool registerEvaluateGenerator(EvaluatorEnvironment& environment,
                                             const char* generatorName, GeneratorFunc function,
                                             const Token* blameToken);
 
+CAKELISP_API bool registerEvaluateMacro(EvaluatorEnvironment& environment, const char* macroName,
+										MacroFunc function, const Token* blameToken);
+
 GeneratorFunc findGenerator(EvaluatorEnvironment& environment, const char* functionName);
 CAKELISP_API void* findCompileTimeFunction(EvaluatorEnvironment& environment,
                                            const char* functionName);

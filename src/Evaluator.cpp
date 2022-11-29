@@ -2346,6 +2346,56 @@ bool registerEvaluateGenerator(EvaluatorEnvironment& environment, const char* ge
 	return numErrors == 0;
 }
 
+bool registerEvaluateMacro(EvaluatorEnvironment& environment, const char* macroName,
+						   MacroFunc function, const Token* blameToken)
+{
+	int numErrors = 0;
+
+	if (findMacro(environment, macroName))
+	{
+		Logf("warning: re-registered macro %s. References will NOT be reevaluated\n", macroName);
+		return true;
+	}
+	else
+	{
+		ObjectDefinition newDefinition = {};
+		newDefinition.name = macroName;
+		newDefinition.definitionInvocation = blameToken;
+		// Make sure these don't get built
+		newDefinition.type = ObjectType_CompileTimeMacro;
+		if (!addObjectDefinition(environment, newDefinition))
+		{
+			Logf("error: could not add %s as a definition\n.", macroName);
+			return false;
+		}
+
+		environment.macros[macroName] = function;
+
+		if (!environment.referencePools.empty())
+			ReevaluateResolveReferences(environment, macroName, /*warnIfNoReferences=*/false,
+			                            numErrors);
+
+		// Mark them as resolved
+		// TODO Slow HACK!
+		if (!numErrors)
+		{
+			for (ObjectDefinitionPair& definitionPair : environment.definitions)
+			{
+				ObjectDefinition& definition = definitionPair.second;
+
+				for (ObjectReferenceStatusPair& reference : definition.references)
+				{
+					ObjectReferenceStatus& referenceStatus = reference.second;
+
+					if (referenceStatus.name->contents.compare(macroName) == 0)
+						referenceStatus.guessState = GuessState_Resolved;
+				}
+			}
+		}
+	}
+	return numErrors == 0;
+}
+
 bool AddCompileTimeHook(EvaluatorEnvironment& environment, std::vector<CompileTimeHook>* hookList,
                         const char* expectedSignature, const char* compileTimeFunctionName,
                         void* hookFunction, int userPriority, const Token* blameToken)
