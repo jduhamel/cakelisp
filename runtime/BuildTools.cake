@@ -7,7 +7,7 @@
 (defmacro run-process-wait-for-completion-body ()
   (tokenize-push output
     (var status int -1)
-    (unless (= 0 (runProcess (deref run-arguments) (addr status)))
+    (unless (= 0 (runProcess run-arguments (addr status)))
       (Log "error: failed to run process\n")
       (return 1))
 
@@ -18,7 +18,7 @@
 (defmacro run-process-wait-for-completion-with-output-body (on-output any)
   (tokenize-push output
     (var status int -1)
-    (unless (= 0 (runProcess (deref run-arguments) (addr status)))
+    (unless (= 0 (runProcess run-arguments (addr status)))
       (Log "error: failed to run process\n")
       (return 1))
 
@@ -147,7 +147,7 @@
                                  'resolve
                                  ;; +1 because we want the inside of the command
                                  (token-splice-rest (+ 1 command) tokens))
-     (unless (= 0 (runProcess process-command (token-splice status-int-ptr)))
+     (unless (= 0 (runProcess (addr process-command) (token-splice status-int-ptr)))
        (Log "error: failed to start process\n")
        (token-splice-rest on-failure-to-start tokens))))
   (return true))

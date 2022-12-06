@@ -1,6 +1,7 @@
 #include "ModuleManager.hpp"
 
 #include <string.h>
+#include <thread>
 
 #include <cstring>
 
@@ -42,6 +43,9 @@ void listBuiltInGenerators()
 
 void moduleManagerInitialize(ModuleManager& manager)
 {
+	g_maxProcessesRecommendedSpawned = std::thread::hardware_concurrency();
+	g_shouldLogProcesses = logging.processes;
+
 	importFundamentalGenerators(manager.environment);
 
 	// Create module definition for top-level references to attach to
@@ -879,7 +883,7 @@ void buildObjectsFree(std::vector<BuildObject*>& objects)
 }
 
 void copyModuleBuildOptionsToBuildObject(Module* module, ProcessCommand* buildCommandOverride,
-                                         BuildObject* object)
+                                         BuildObject* object, bool isUsingCCompiler)
 {
 	object->buildCommandOverride = buildCommandOverride;
 
@@ -893,6 +897,11 @@ void copyModuleBuildOptionsToBuildObject(Module* module, ProcessCommand* buildCo
 	PushBackAll(object->headerSearchDirectories, module->cSearchDirectories);
 
 	PushBackAll(object->additionalOptions, module->additionalBuildOptions);
+
+	if (!isUsingCCompiler)
+	{
+		PushBackAll(object->additionalOptions, module->additionalCppOnlyBuildOptions);
+	}
 }
 
 // Copy cachedOutputExecutable to finalOutputNameOut, adding executable permissions
@@ -1068,8 +1077,8 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 
 				ProcessCommand* moduleBuildCommandOverride = buildCommandOverride;
 				bool isDependencyCpp = strcmp(newBuildObject->sourceFilename.c_str() +
-				                              (newBuildObject->sourceFilename.size() - 3),
-				                          "cpp") == 0;
+				                                  (newBuildObject->sourceFilename.size() - 3),
+				                              "cpp") == 0;
 				if (isUsingCCompiler && isDependencyCpp)
 				{
 					// Use the default C++ compiler
@@ -1078,7 +1087,8 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 				}
 				// This is a bit weird to automatically use the parent module's build command
 				copyModuleBuildOptionsToBuildObject(module, moduleBuildCommandOverride,
-				                                    newBuildObject);
+				                                    newBuildObject,
+				                                    isUsingCCompiler && !isDependencyCpp);
 
 				buildObjects.push_back(newBuildObject);
 			}
@@ -1140,7 +1150,8 @@ static bool moduleManagerGetObjectsToBuild(ModuleManager& manager,
 		newBuildObject->sourceFilename = module->sourceOutputName.c_str();
 		newBuildObject->filename = buildObjectName;
 
-		copyModuleBuildOptionsToBuildObject(module, buildCommandOverride, newBuildObject);
+		copyModuleBuildOptionsToBuildObject(module, buildCommandOverride, newBuildObject,
+		                                    isUsingCCompiler);
 
 		buildObjects.push_back(newBuildObject);
 	}
@@ -1338,7 +1349,7 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 		compileArguments.arguments = buildArguments;
 		// PrintProcessArguments(buildArguments);
 
-		if (runProcess(compileArguments, &object->buildStatus) != 0)
+		if (runProcess(&compileArguments, &object->buildStatus) != 0)
 		{
 			Log("error: failed to invoke compiler\n");
 			free(buildArguments);
@@ -1351,7 +1362,7 @@ bool moduleManagerBuild(ModuleManager& manager, std::vector<BuildObject*>& build
 		// TODO This could be made smarter by allowing more spawning right when a process
 		// closes, instead of starting in waves
 		++currentNumProcessesSpawned;
-		if (currentNumProcessesSpawned >= maxProcessesRecommendedSpawned)
+		if (currentNumProcessesSpawned >= g_maxProcessesRecommendedSpawned)
 		{
 			waitForAllProcessesClosed(OnCompileProcessOutput);
 			currentNumProcessesSpawned = 0;
@@ -1582,7 +1593,7 @@ bool moduleManagerLink(ModuleManager& manager, std::vector<BuildObject*>& buildO
 		linkArguments.fileToExecute = buildTimeLinkExecutable;
 		linkArguments.arguments = linkArgumentList;
 		int linkStatus = 0;
-		if (runProcess(linkArguments, &linkStatus) != 0)
+		if (runProcess(&linkArguments, &linkStatus) != 0)
 		{
 			free(linkArgumentList);
 			buildObjectsFree(buildObjects);
@@ -1693,7 +1704,7 @@ bool moduleManagerExecuteBuiltOutputs(ModuleManager& manager,
 		arguments.workingDirectory = workingDirectory;
 		int status = 0;
 
-		if (runProcess(arguments, &status) != 0)
+		if (runProcess(&arguments, &status) != 0)
 		{
 			Logf("error: execution of %s failed\n", output.c_str());
 			free((void*)executablePath);
@@ -1717,3 +1728,5 @@ bool moduleManagerExecuteBuiltOutputs(ModuleManager& manager,
 
 	return true;
 }
+
+int g_maxProcessesRecommendedSpawned = 8;

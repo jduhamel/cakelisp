@@ -991,7 +991,7 @@ bool ComptimePrepareHeaders(EvaluatorEnvironment& environment)
 	arguments.fileToExecute = buildExecutable;
 	arguments.arguments = buildArguments;
 	int status = -1;
-	if (runProcess(arguments, &status) != 0)
+	if (runProcess(&arguments, &status) != 0)
 	{
 		free(buildArguments);
 		environment.comptimeNewCommandCrcs.erase(precompiledHeaderFilename);
@@ -1303,7 +1303,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		RunProcessArguments compileArguments = {};
 		compileArguments.fileToExecute = compileTimeBuildExecutable;
 		compileArguments.arguments = buildArguments;
-		if (runProcess(compileArguments, &buildObject.status) != 0)
+		if (runProcess(&compileArguments, &buildObject.status) != 0)
 		{
 			// TODO: Abort building if cannot invoke compiler?
 			free(buildArguments);
@@ -1317,7 +1317,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		// TODO This could be made smarter by allowing more spawning right when a process closes,
 		// instead of starting in waves
 		++currentNumProcessesSpawned;
-		if (currentNumProcessesSpawned >= maxProcessesRecommendedSpawned)
+		if (currentNumProcessesSpawned >= g_maxProcessesRecommendedSpawned)
 		{
 			waitForAllProcessesClosed(OnCompileProcessOutput);
 			currentNumProcessesSpawned = 0;
@@ -1416,7 +1416,7 @@ int BuildExecuteCompileTimeFunctions(EvaluatorEnvironment& environment,
 		RunProcessArguments linkArguments = {};
 		linkArguments.fileToExecute = compileTimeLinkExecutable;
 		linkArguments.arguments = linkArgumentList;
-		if (runProcess(linkArguments, &buildObject.status) != 0)
+		if (runProcess(&linkArguments, &buildObject.status) != 0)
 		{
 			++numErrorsOut;
 			// TODO: Abort if linker failed?

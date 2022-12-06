@@ -90,9 +90,14 @@ GeneratorMetadata g_generatorMetadata[] = {
     {
         "add-c-build-dependency",
     },
-    {
-        "add-build-options",
-    },
+    {"add-build-options", GeneratorCategory_Build, LanguageRequirement_Evaluated,
+     EvaluationTime_EvaluatedImmediately, 0, MaxArgumentsUnlimited,
+     "Add the given option strings as arguments to the compiler. Unlike (add-cpp-build-options), "
+     "these are used on both C and C++ modules."},
+    {"add-cpp-build-options", GeneratorCategory_Build, LanguageRequirement_Evaluated,
+     EvaluationTime_EvaluatedImmediately, 0, MaxArgumentsUnlimited,
+     "Add the given option strings as arguments to the C++ compiler. Unlike (add-build-options), "
+     "these will only be used if the file is a C++ module."},
     {
         "add-compile-time-hook",
     },
@@ -103,7 +108,7 @@ GeneratorMetadata g_generatorMetadata[] = {
         "add-linker-options",
     },
     {"add-static-link-objects", GeneratorCategory_Build, LanguageRequirement_Evaluated,
-     EvaluationTime_EvaluatedImmediately, 0, MaxArgumentsUnlimited,
+     EvaluationTime_EvaluatedImmediately, 1, MaxArgumentsUnlimited,
      "Link additional objects, static libraries, or (on Windows) compiled resources. Modification "
      "times of the files in this list will be checked and cause a re-link if they are newer than "
      "the cached executable."},
@@ -205,8 +210,11 @@ GeneratorMetadata g_generatorMetadata[] = {
     },
     {"bit-not", GeneratorCategory_Math, LanguageRequirement_C,
      (EvaluationTime_CompileTime | EvaluationTime_Runtime), 1, 1,
-     "Invert all the bits of the first argument. Also known as One's compliment or the bit "
-     "compliment operator."},
+     "Invert all the bits of the first argument. Also known as One's complement or the bit "
+     "complement operator."},
+    {"bit-ones-complement", GeneratorCategory_Math, LanguageRequirement_C,
+     (EvaluationTime_CompileTime | EvaluationTime_Runtime), 1, 1,
+     "[DEPRECATED] use (bit-not) instead"},
     {
         "bit-xor",
     },

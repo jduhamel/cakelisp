@@ -10,7 +10,7 @@
  ;; TODO: Remove this once RunProcess.hpp doesn't use <vector>
  (require-cpp))
 
-(add-c-build-dependency "RunProcess.cpp" "Utilities.cpp" "Logging.cpp")
+(add-c-build-dependency "RunProcess.c")
 
 (comptime-cond
  ('Unix

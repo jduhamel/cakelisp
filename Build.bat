@@ -39,7 +39,8 @@ CL.exe src/Tokenizer.cpp ^
  src/Writer.cpp ^
  src/Generators.cpp ^
  src/GeneratorHelpers.cpp ^
- src/RunProcess.cpp ^
+ src/RunProcess.c ^
+ src/RunProcessHelpers.cpp ^
  src/OutputPreambles.cpp ^
  src/DynamicLoader.cpp ^
  src/ModuleManager.cpp ^

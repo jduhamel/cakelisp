@@ -116,7 +116,10 @@
     <ClCompile Include="..\..\src\OutputPreambles.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\RunProcess.cpp">
+    <ClCompile Include="..\..\src\RunProcess.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+	<ClCompile Include="..\..\src\RunProcessHelpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\Tokenizer.cpp">

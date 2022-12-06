@@ -65,6 +65,7 @@ struct Module
 
 	std::vector<std::string> cSearchDirectories;
 	std::vector<std::string> additionalBuildOptions;
+	std::vector<std::string> additionalCppOnlyBuildOptions;
 
 	std::vector<std::string> librarySearchDirectories;
 	std::vector<std::string> libraryRuntimeSearchDirectories;

@@ -10,6 +10,7 @@
 #include "Exporting.hpp"
 #include "FileTypes.hpp"
 #include "RunProcess.hpp"
+#include "RunProcessHelpers.hpp"
 
 struct GeneratorOutput;
 struct ModuleManager;
@@ -561,3 +562,5 @@ bool StringOutputHasAnyMeaningfulOutput(const std::vector<StringOutput>* stringO
 
 extern const char* globalDefinitionName;
 extern const char* cakelispWorkingDir;
+
+extern int g_maxProcessesRecommendedSpawned;

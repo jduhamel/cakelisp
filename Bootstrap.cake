@@ -10,7 +10,7 @@
  "Writer.cpp"
  "Generators.cpp"
  "GeneratorHelpers.cpp"
- "RunProcess.cpp"
+ "RunProcessHelpers.cpp"
  "OutputPreambles.cpp"
  "DynamicLoader.cpp"
  "ModuleManager.cpp"
@@ -19,7 +19,12 @@
  "Metadata.cpp"
  "Main.cpp")
 
-(add-build-options "-DUNIX" "-Wall" "-Werror" "-std=c++11")
+(add-c-build-dependency
+ "RunProcess.c")
+
+(add-build-options "-DUNIX" "-Wall" "-Werror")
+
+(add-cpp-build-options "-std=c++11")
 
 ;; Cakelisp dynamically loads compile-time code
 (add-library-dependency "dl")

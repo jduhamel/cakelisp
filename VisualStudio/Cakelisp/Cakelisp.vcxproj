@@ -160,7 +160,8 @@
 	<ClCompile Include="..\..\src\Metadata.cpp" />
     <ClCompile Include="..\..\src\ModuleManager.cpp" />
     <ClCompile Include="..\..\src\OutputPreambles.cpp" />
-    <ClCompile Include="..\..\src\RunProcess.cpp" />
+    <ClCompile Include="..\..\src\RunProcess.c" />
+	<ClCompile Include="..\..\src\RunProcessHelpers.cpp" />
     <ClCompile Include="..\..\src\Tokenizer.cpp" />
     <ClCompile Include="..\..\src\Utilities.cpp" />
     <ClCompile Include="..\..\src\Writer.cpp" />

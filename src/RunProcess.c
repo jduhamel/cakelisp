@@ -1,8 +1,7 @@
 #include "RunProcess.hpp"
 
 #include <stdio.h>
-
-#include <vector>
+#include <stdlib.h>
 
 #if defined(UNIX) || defined(MACOS)
 #include <string.h>
@@ -13,16 +12,21 @@
 #elif WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-
-// _tprintf() Remove me!
-#include <tchar.h>
-
 #else
 #error Platform support is needed for running subprocesses
 #endif
 
-#include "Logging.hpp"
-#include "Utilities.hpp"
+char* strdup(const char* s);
+
+// Some helpers copied from Utilities.hpp so I don't need C++
+#define ArraySize(array) sizeof((array)) / sizeof((array)[0])
+#define Logf(format, ...) fprintf(stderr, format, __VA_ARGS__)
+#define Log(format) fprintf(stderr, format)
+#ifdef WINDOWS
+#define StrDuplicate(str) _strdup(str)
+#else
+#define StrDuplicate(str) strdup(str)
+#endif
 
 #if defined(UNIX) || defined(MACOS)
 typedef pid_t ProcessId;
@@ -30,7 +34,9 @@ typedef pid_t ProcessId;
 typedef int ProcessId;
 #endif
 
-struct Subprocess
+#define MAX_NUM_SUBPROCESSES 128
+
+typedef struct Subprocess
 {
 	int* statusOut;
 #if defined(UNIX) || defined(MACOS)
@@ -41,10 +47,30 @@ struct Subprocess
 	// HANDLE hChildStd_IN_Wr; // Not used
 	HANDLE hChildStd_OUT_Rd;
 #endif
-	std::string command;
-};
+	// Will be freed by freeSubprocessSlot
+	char* command;
+} Subprocess;
 
-static std::vector<Subprocess> s_subprocesses;
+// command == NULL indicates an empty slot
+static Subprocess s_subprocesses[MAX_NUM_SUBPROCESSES] = {0};
+
+Subprocess* getFreeSubprocessSlot(void)
+{
+	for (unsigned int i = 0; i < ArraySize(s_subprocesses); ++i)
+	{
+		Subprocess* currentSubprocess = &s_subprocesses[i];
+		if (!currentSubprocess->command)
+			return currentSubprocess;
+	}
+	return NULL;
+}
+
+void freeSubprocessSlot(Subprocess* subprocess)
+{
+	if (subprocess->command)
+		free(subprocess->command);
+	memset(subprocess, 0, sizeof(Subprocess));
+}
 
 // Never returns, if success
 void systemExecute(const char* fileToExecute, char** arguments)
@@ -62,19 +88,19 @@ void subprocessReceiveStdOut(const char* processOutputBuffer)
 	Logf("%s", processOutputBuffer);
 }
 
-int runProcess(const RunProcessArguments& arguments, int* statusOut)
+int runProcess(const RunProcessArguments* arguments, int* statusOut)
 {
-	if (!arguments.arguments)
+	if (!arguments->arguments)
 	{
 		Log("error: runProcess() called with empty arguments. At a minimum, first argument must be "
 		    "executable name\n");
 		return 1;
 	}
 
-	if (logging.processes)
+	if (g_shouldLogProcesses)
 	{
 		Log("RunProcess command: ");
-		for (const char** arg = arguments.arguments; *arg != nullptr; ++arg)
+		for (const char** arg = arguments->arguments; *arg != NULL; ++arg)
 		{
 			Logf("%s ", *arg);
 		}
@@ -110,46 +136,46 @@ int runProcess(const RunProcessArguments& arguments, int* statusOut)
 		// Only write
 		close(pipeFileDescriptors[PipeRead]);
 
-		char** nonConstArguments = nullptr;
+		char** nonConstArguments = NULL;
 		{
 			int numArgs = 0;
-			for (const char** arg = arguments.arguments; *arg != nullptr; ++arg)
+			for (const char** arg = arguments->arguments; *arg != NULL; ++arg)
 				++numArgs;
 
 			// Add one for null sentinel
-			nonConstArguments = new char*[numArgs + 1];
+			nonConstArguments = (char**)malloc(sizeof(char*) * (numArgs + 1));
 			int i = 0;
-			for (const char** arg = arguments.arguments; *arg != nullptr; ++arg)
+			for (const char** arg = arguments->arguments; *arg != NULL; ++arg)
 			{
 				nonConstArguments[i] = StrDuplicate(*arg);
 				++i;
 			}
 
 			// Null sentinel
-			nonConstArguments[numArgs] = nullptr;
+			nonConstArguments[numArgs] = NULL;
 		}
 
-		if (arguments.workingDirectory)
+		if (arguments->workingDirectory)
 		{
-			if (chdir(arguments.workingDirectory) != 0)
+			if (chdir(arguments->workingDirectory) != 0)
 			{
 				Logf("error: RunProcess failed to change directory to '%s'\n",
-				     arguments.workingDirectory);
+				     arguments->workingDirectory);
 				perror("RunProcess chdir");
 				goto childProcessFailed;
 			}
 
-			if (logging.processes)
-				Logf("Set working directory to %s\n", arguments.workingDirectory);
+			if (g_shouldLogProcesses)
+				Logf("Set working directory to %s\n", arguments->workingDirectory);
 		}
 
-		systemExecute(arguments.fileToExecute, nonConstArguments);
+		systemExecute(arguments->fileToExecute, nonConstArguments);
 
 	childProcessFailed:
 		// This shouldn't happen unless the execution failed or soemthing
-		for (char** arg = nonConstArguments; *arg != nullptr; ++arg)
-			delete *arg;
-		delete[] nonConstArguments;
+		for (char** arg = nonConstArguments; *arg != NULL; ++arg)
+			free(*arg);
+		free(nonConstArguments);
 
 		// A failed child should not flush parent files
 		_exit(EXIT_FAILURE); /*  */
@@ -160,29 +186,45 @@ int runProcess(const RunProcessArguments& arguments, int* statusOut)
 		// Only read
 		close(pipeFileDescriptors[PipeWrite]);
 
-		if (logging.processes)
+		if (g_shouldLogProcesses)
 			Logf("Created child process %d\n", pid);
 
-		std::string command = "";
-		for (const char** arg = arguments.arguments; *arg != nullptr; ++arg)
+		Subprocess* newSubprocess = getFreeSubprocessSlot();
+		if (!newSubprocess)
 		{
-			command.append(*arg);
-			command.append(" ");
+			Log("RunProcess ran out of free subprocess slots\n");
+			return 1;
 		}
 
-		s_subprocesses.push_back({statusOut, pid, pipeFileDescriptors[PipeRead], command});
+		size_t commandSize = 0;
+		for (const char** arg = arguments->arguments; *arg != NULL; ++arg)
+			commandSize += strlen(*arg) + 1;
+		char* fullCommand = (char*)malloc(commandSize + 1);
+		memset(fullCommand, 0, commandSize + 1);
+		char* commandWriteHead = fullCommand;
+		for (const char** arg = arguments->arguments; *arg != NULL; ++arg)
+		{
+			commandWriteHead += snprintf(
+			    commandWriteHead, (commandSize - (commandWriteHead - fullCommand)), "%s ", *arg);
+		}
+		*commandWriteHead = 0;
+
+		newSubprocess->statusOut = statusOut;
+		newSubprocess->processId = pid;
+		newSubprocess->pipeReadFileDescriptor = pipeFileDescriptors[PipeRead];
+		newSubprocess->command = fullCommand;
 	}
 
 	return 0;
 #elif WINDOWS
-	const char* fileToExecute = arguments.fileToExecute;
+	const char* fileToExecute = arguments->fileToExecute;
 
 	// Build a single string with all arguments
-	char* commandLineString = nullptr;
+	char* commandLineString = NULL;
 	{
 		size_t commandLineLength = 0;
 		bool isFirstArg = true;
-		for (const char** arg = arguments.arguments; *arg != nullptr; ++arg)
+		for (const char** arg = arguments->arguments; *arg != NULL; ++arg)
 		{
 			if (isFirstArg)
 			{
@@ -201,7 +243,7 @@ int runProcess(const RunProcessArguments& arguments, int* statusOut)
 		commandLineString[commandLineLength - 1] = '\0';
 		char* writeHead = commandLineString;
 		isFirstArg = true;
-		for (const char** arg = arguments.arguments; *arg != nullptr; ++arg)
+		for (const char** arg = arguments->arguments; *arg != NULL; ++arg)
 		{
 			// Support executable with spaces in path
 			if (isFirstArg)
@@ -237,7 +279,7 @@ int runProcess(const RunProcessArguments& arguments, int* statusOut)
 				}
 			}
 
-			if (*(arg + 1) != nullptr)
+			if (*(arg + 1) != NULL)
 			{
 				if (!writeCharToBuffer(' ', &writeHead, commandLineString, commandLineLength))
 				{
@@ -249,14 +291,14 @@ int runProcess(const RunProcessArguments& arguments, int* statusOut)
 		}
 	}
 
-	if (logging.processes)
+	if (g_shouldLogProcesses)
 		Logf("Final command string: %s\n", commandLineString);
 
 	// Redirect child process std in/out
-	HANDLE hChildStd_IN_Rd = nullptr;
-	HANDLE hChildStd_IN_Wr = nullptr;
-	HANDLE hChildStd_OUT_Rd = nullptr;
-	HANDLE hChildStd_OUT_Wr = nullptr;
+	HANDLE hChildStd_IN_Rd = NULL;
+	HANDLE hChildStd_IN_Wr = NULL;
+	HANDLE hChildStd_OUT_Rd = NULL;
+	HANDLE hChildStd_OUT_Wr = NULL;
 	{
 		SECURITY_ATTRIBUTES securityAttributes;
 		// Set the bInheritHandle flag so pipe handles are inherited.
@@ -314,18 +356,18 @@ int runProcess(const RunProcessArguments& arguments, int* statusOut)
 	startupInfo.hStdInput = hChildStd_IN_Rd;
 	startupInfo.dwFlags |= STARTF_USESTDHANDLES;
 
-	PROCESS_INFORMATION* processInfo = new PROCESS_INFORMATION;
+	PROCESS_INFORMATION* processInfo = (PROCESS_INFORMATION*)malloc(sizeof(PROCESS_INFORMATION));
 	ZeroMemory(processInfo, sizeof(PROCESS_INFORMATION));
 
 	// Start the child process.
 	if (!CreateProcess(fileToExecute,
 	                   commandLineString,           // Command line
-	                   nullptr,                     // No security attributes
-	                   nullptr,                     // Thread handle not inheritable
+	                   NULL,                     // No security attributes
+	                   NULL,                     // Thread handle not inheritable
 	                   true,                        // Set handle inheritance to true
 	                   0,                           // No creation flags
-	                   nullptr,                     // Use parent's environment block
-	                   arguments.workingDirectory,  // If nullptr, use parent's starting directory
+	                   NULL,                     // Use parent's environment block
+	                   arguments->workingDirectory,  // If NULL, use parent's starting directory
 	                   &startupInfo,                // Pointer to STARTUPINFO structure
 	                   processInfo))                // Pointer to PROCESS_INFORMATION structure
 	{
@@ -357,12 +399,17 @@ int runProcess(const RunProcessArguments& arguments, int* statusOut)
 	CloseHandle(hChildStd_IN_Rd);
 	CloseHandle(hChildStd_IN_Wr);
 
-	Subprocess newProcess = {0};
-	newProcess.statusOut = statusOut;
-	newProcess.processInfo = processInfo;
-	newProcess.hChildStd_OUT_Rd = hChildStd_OUT_Rd;
-	newProcess.command = commandLineString;
-	s_subprocesses.push_back(std::move(newProcess));
+	Subprocess* newProcess = getFreeSubprocessSlot();
+	if (!newSubprocess)
+	{
+		Log("RunProcess ran out of free subprocess slots\n");
+		free(commandLineString);
+		return 1;
+	}
+	newProcess->statusOut = statusOut;
+	newProcess->processInfo = processInfo;
+	newProcess->hChildStd_OUT_Rd = hChildStd_OUT_Rd;
+	newProcess->command = commandLineString;
 
 	free(commandLineString);
 
@@ -414,12 +461,12 @@ void readProcessPipe(Subprocess& process, SubprocessOnOutputFunc onOutput)
 // between two processes aren't mangled together terribly
 void waitForAllProcessesClosed(SubprocessOnOutputFunc onOutput)
 {
-	if (s_subprocesses.empty())
-		return;
-
-	for (size_t i = 0; i < s_subprocesses.size(); ++i)
+	for (size_t i = 0; i < ArraySize(s_subprocesses); ++i)
 	{
 		Subprocess* process = &s_subprocesses[i];
+		if (!process->command)
+			continue;
+
 #if defined(UNIX) || defined(MACOS)
 		char processOutputBuffer[1024] = {0};
 		int numBytesRead =
@@ -440,7 +487,7 @@ void waitForAllProcessesClosed(SubprocessOnOutputFunc onOutput)
 
 		// It's pretty useful to see the command which resulted in failure
 		if (*process->statusOut != 0)
-			Logf("%s\n", process->command.c_str());
+			Logf("%s\n", process->command);
 #elif WINDOWS
 
 		// We cannot wait indefinitely because the process eventually waits for us to read from the
@@ -474,9 +521,9 @@ void waitForAllProcessesClosed(SubprocessOnOutputFunc onOutput)
 		CloseHandle(process->processInfo->hThread);
 		CloseHandle(process->hChildStd_OUT_Rd);
 #endif
+		// We're done with it
+		freeSubprocessSlot(process);
 	}
-
-	s_subprocesses.clear();
 }
 
 void PrintProcessArguments(const char** processArguments)
@@ -486,112 +533,4 @@ void PrintProcessArguments(const char** processArguments)
 	Log("\n");
 }
 
-static const char* ProcessCommandArgumentTypeToString(ProcessCommandArgumentType type)
-{
-	switch (type)
-	{
-		case ProcessCommandArgumentType_None:
-			return "None";
-		case ProcessCommandArgumentType_String:
-			return "String";
-		case ProcessCommandArgumentType_SourceInput:
-			return "SourceInput";
-		case ProcessCommandArgumentType_ObjectOutput:
-			return "ObjectOutput";
-		case ProcessCommandArgumentType_DebugSymbolsOutput:
-			return "DebugSymbolsOutput";
-		case ProcessCommandArgumentType_ImportLibraryPaths:
-			return "ImportLibraryPaths";
-		case ProcessCommandArgumentType_ImportLibraries:
-			return "ImportLibraries";
-		case ProcessCommandArgumentType_CakelispHeadersInclude:
-			return "CakelispHeadersInclude";
-		case ProcessCommandArgumentType_IncludeSearchDirs:
-			return "IncludeSearchDirs";
-		case ProcessCommandArgumentType_AdditionalOptions:
-			return "AdditionalOptions";
-		case ProcessCommandArgumentType_PrecompiledHeaderOutput:
-			return "PrecompiledHeaderOutput";
-		case ProcessCommandArgumentType_PrecompiledHeaderInclude:
-			return "PrecompiledHeaderInclude";
-		case ProcessCommandArgumentType_ObjectInput:
-			return "ObjectInput";
-		case ProcessCommandArgumentType_DynamicLibraryOutput:
-			return "DynamicLibraryOutput";
-		case ProcessCommandArgumentType_LibrarySearchDirs:
-			return "LibrarySearchDirs";
-		case ProcessCommandArgumentType_Libraries:
-			return "Libraries";
-		case ProcessCommandArgumentType_LibraryRuntimeSearchDirs:
-			return "LibraryRuntimeSearchDirs";
-		case ProcessCommandArgumentType_LinkerArguments:
-			return "LinkerArguments";
-		case ProcessCommandArgumentType_ExecutableOutput:
-			return "ExecutableOutput";
-		default:
-			return "Unknown";
-	}
-}
-
-// The array will need to be deleted, but the array members will not
-const char** MakeProcessArgumentsFromCommand(const char* fileToExecute,
-                                             std::vector<ProcessCommandArgument>& arguments,
-                                             const ProcessCommandInput* inputs, int numInputs)
-{
-	std::vector<const char*> argumentsAccumulate;
-
-	for (unsigned int i = 0; i < arguments.size(); ++i)
-	{
-		ProcessCommandArgument& argument = arguments[i];
-
-		if (argument.type == ProcessCommandArgumentType_String)
-			argumentsAccumulate.push_back(argument.contents.c_str());
-		else
-		{
-			bool found = false;
-			for (int input = 0; input < numInputs; ++input)
-			{
-				if (inputs[input].type == argument.type)
-				{
-					for (const char* value : inputs[input].value)
-					{
-						if (!value || !value[0])
-						{
-							Logf(
-							    "warning: attempted to pass null string to '%s' under argument "
-							    "type %s. It will be ignored\n",
-							    fileToExecute, ProcessCommandArgumentTypeToString(argument.type));
-							continue;
-						}
-
-						argumentsAccumulate.push_back(value);
-					}
-					found = true;
-					break;
-				}
-			}
-			if (!found)
-			{
-				Logf("error: command to %s missing ProcessCommandInput of type %s\n", fileToExecute,
-				     ProcessCommandArgumentTypeToString(argument.type));
-				return nullptr;
-			}
-		}
-	}
-
-	int numUserArguments = argumentsAccumulate.size();
-	// +1 for file to execute
-	int numFinalArguments = numUserArguments + 1;
-	// +1 again for the null terminator
-	const char** newArguments = (const char**)calloc(sizeof(const char*), numFinalArguments + 1);
-
-	newArguments[0] = fileToExecute;
-	for (int i = 1; i < numFinalArguments; ++i)
-		newArguments[i] = argumentsAccumulate[i - 1];
-	newArguments[numFinalArguments] = nullptr;
-
-	return newArguments;
-}
-
-#include <thread>
-const int maxProcessesRecommendedSpawned = std::thread::hardware_concurrency();
+bool g_shouldLogProcesses = false;
