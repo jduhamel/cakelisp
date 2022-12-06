@@ -5,10 +5,10 @@
 
 (export-and-evaluate
  (add-cakelisp-src-as-search-dir)
- (c-import "RunProcess.hpp" "FileUtilities.hpp" "Build.hpp" "Utilities.hpp")
- (import "BuildTools.cake")
- ;; TODO: Remove this once RunProcess.hpp doesn't use <vector>
- (require-cpp))
+ (c-import "RunProcess.hpp"
+           "<string.h>" "<stdio.h>")
+ ;; Necessary for 'resolve: "FileUtilities.hpp" "Build.hpp" "Utilities.hpp"
+ (import "BuildTools.cake"))
 
 (add-c-build-dependency "RunProcess.c")
 

@@ -8,7 +8,7 @@
   (tokenize-push output
     (var status int -1)
     (unless (= 0 (runProcess run-arguments (addr status)))
-      (Log "error: failed to run process\n")
+      (fprintf stderr "error: failed to run process\n")
       (return 1))
 
     (waitForAllProcessesClosed null)
@@ -19,7 +19,7 @@
   (tokenize-push output
     (var status int -1)
     (unless (= 0 (runProcess run-arguments (addr status)))
-      (Log "error: failed to run process\n")
+      (fprintf stderr "error: failed to run process\n")
       (return 1))
 
     (waitForAllProcessesClosed (token-splice on-output))
@@ -67,7 +67,7 @@
              ;; (scope ;; Make the path absolute if necessary
              ;;  (var working-dir-alloc (addr (const char)) (makeAbsolutePath_Allocated null (token-splice next-token)))
              ;;  (unless working-dir-alloc
-             ;;    (Logf "error: could not find expected directory %s" (token-splice next-token))
+             ;;    (fprintf stderr "error: could not find expected directory %s" (token-splice next-token))
              ;;    (return false))
              ;;  ;; Copy it so we don't need to worry about freeing if something goes wrong
              ;;  (set (token-splice-addr working-dir-str-var) working-dir-alloc)
@@ -82,7 +82,7 @@
             (ErrorAtToken (deref current-token) "unrecognized specifier. Valid specifiers: :in-directory")
             (return false))))
 
-        ;; Everything else is a argument to the command
+        ;; Everything else is an argument to the command
         (true
          (call-on push_back command-arguments (deref current-token))))
       (incr current-token)))
@@ -148,7 +148,7 @@
                                  ;; +1 because we want the inside of the command
                                  (token-splice-rest (+ 1 command) tokens))
      (unless (= 0 (runProcess (addr process-command) (token-splice status-int-ptr)))
-       (Log "error: failed to start process\n")
+       (fprintf stderr "error: failed to start process\n")
        (token-splice-rest on-failure-to-start tokens))))
   (return true))
 
