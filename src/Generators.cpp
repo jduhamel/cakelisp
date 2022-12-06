@@ -3108,7 +3108,7 @@ bool CStatementGenerator(EvaluatorEnvironment& environment, const EvaluatorConte
 	    {"bit-or", bitwiseOr, ArraySize(bitwiseOr), RequiredFeature_None},
 	    {"bit-and", bitwiseAnd, ArraySize(bitwiseAnd), RequiredFeature_None},
 	    {"bit-xor", bitwiseXOr, ArraySize(bitwiseXOr), RequiredFeature_None},
-	    {"bit-ones-complement", bitwiseOnesComplement, ArraySize(bitwiseOnesComplement), RequiredFeature_None},
+	    {"bit-not", bitwiseOnesComplement, ArraySize(bitwiseOnesComplement), RequiredFeature_None},
 	    {"bit-shift-<<", bitwiseLeftShift, ArraySize(bitwiseLeftShift), RequiredFeature_None},
 	    {"bit-shift->>", bitwiseRightShift, ArraySize(bitwiseRightShift), RequiredFeature_None},
 	    {"=", relationalEquality, ArraySize(relationalEquality), RequiredFeature_None},
@@ -3297,7 +3297,7 @@ void importFundamentalGenerators(EvaluatorEnvironment& environment)
 	    // Boolean
 	    "or", "and", "not",
 	    // Bitwise
-	    "bit-or", "bit-and", "bit-xor", "bit-ones-complement", "bit-shift-<<", "bit-shift->>",
+	    "bit-or", "bit-and", "bit-xor", "bit-not", "bit-shift-<<", "bit-shift->>",
 	    // Relational
 	    "=", "!=", /*"eq", "neq",*/ "<=", ">=", "<", ">",
 	    // Arithmetic
@@ -3317,6 +3317,7 @@ void importFundamentalGenerators(EvaluatorEnvironment& environment)
 	    {"nth", "use (at) instead"},
 		{"bit-<<", "use (bit-shift-<<) instead"},
 		{"bit->>", "use (bit-shift->>) instead"},
+		{"bit-ones-complement", "use (bit-not) instead"},
 		{"%", "use (mod) instead"},
 		{"++", "use (incr) instead"},
 		{"--", "use (decr) instead"},

@@ -203,9 +203,10 @@ GeneratorMetadata g_generatorMetadata[] = {
     {
         "bit-or",
     },
-    {
-        "bit-ones-complement",
-    },
+    {"bit-not", GeneratorCategory_Math, LanguageRequirement_C,
+     (EvaluationTime_CompileTime | EvaluationTime_Runtime), 1, 1,
+     "Invert all the bits of the first argument. Also known as One's compliment or the bit "
+     "compliment operator."},
     {
         "bit-xor",
     },

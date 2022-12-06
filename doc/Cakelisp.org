@@ -261,7 +261,7 @@ The following modify the argument:
 - ~bit-or~:
 - ~bit-and~:
 - ~bit-xor~:
-- ~bit-ones-complement~:
+- ~bit-not~:
 - ~bit-<<~: Left-shift. E.g. ~(bit-<< 1 1)~ shifts 1 to the left once, which in binary becomes ~10~, or 2 in decimal
 - ~bit->>~: Right-shift. E.g. ~(bit->> 2 1)~ shifts 2 to the right once, which in binary becomes ~1~, or 1 in decimal
 * Tokens
