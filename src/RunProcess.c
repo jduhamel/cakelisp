@@ -361,15 +361,15 @@ int runProcess(const RunProcessArguments* arguments, int* statusOut)
 
 	// Start the child process.
 	if (!CreateProcess(fileToExecute,
-	                   commandLineString,           // Command line
-	                   NULL,                     // No security attributes
-	                   NULL,                     // Thread handle not inheritable
-	                   true,                        // Set handle inheritance to true
-	                   0,                           // No creation flags
-	                   NULL,                     // Use parent's environment block
+	                   commandLineString,            // Command line
+	                   NULL,                         // No security attributes
+	                   NULL,                         // Thread handle not inheritable
+	                   true,                         // Set handle inheritance to true
+	                   0,                            // No creation flags
+	                   NULL,                         // Use parent's environment block
 	                   arguments->workingDirectory,  // If NULL, use parent's starting directory
-	                   &startupInfo,                // Pointer to STARTUPINFO structure
-	                   processInfo))                // Pointer to PROCESS_INFORMATION structure
+	                   &startupInfo,                 // Pointer to STARTUPINFO structure
+	                   processInfo))                 // Pointer to PROCESS_INFORMATION structure
 	{
 		CloseHandle(hChildStd_OUT_Rd);
 		CloseHandle(hChildStd_OUT_Wr);
@@ -429,7 +429,8 @@ void readProcessPipe(Subprocess& process, SubprocessOnOutputFunc onOutput)
 	{
 		DWORD bytesRead = 0;
 		DWORD bytesWritten = 0;
-		bool success = ReadFile(process.hChildStd_OUT_Rd, buffer, sizeof(buffer) - 1, &bytesRead, NULL);
+		bool success =
+		    ReadFile(process.hChildStd_OUT_Rd, buffer, sizeof(buffer) - 1, &bytesRead, NULL);
 		if (!success || bytesRead == 0)
 		{
 			encounteredError = !success;
