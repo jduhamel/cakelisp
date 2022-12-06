@@ -22,7 +22,7 @@ if not exist "bin" (
 mkdir bin
 )
 
-if not exist "bin\cakelisp_bootstrap_v2.exe" (
+if not exist "bin\cakelisp_bootstrap_v3.exe" (
   goto manualBuild
 ) else (
   goto bootstrapBuild
@@ -50,7 +50,7 @@ CL.exe src/Tokenizer.cpp ^
  Advapi32.lib Ole32.lib OleAut32.lib ^
  /I 3rdPartySrc ^
  /EHsc /MP /DWINDOWS /DCAKELISP_EXPORTING ^
- /Fe"bin\cakelisp_bootstrap_v2" /Zi /Fd"bin\cakelisp_bootstrap_v2.pdb" /DEBUG:FASTLINK
+ /Fe"bin\cakelisp_bootstrap_v3" /Zi /Fd"bin\cakelisp_bootstrap_v3.pdb" /DEBUG:FASTLINK
  echo %ERRORLEVEL%
 
 @if %ERRORLEVEL% == 0 (
@@ -64,7 +64,7 @@ CL.exe src/Tokenizer.cpp ^
 )
 
 :bootstrapBuild
-"bin\cakelisp_bootstrap_v2.exe" Bootstrap_MSVC.cake
+"bin\cakelisp_bootstrap_v3.exe" Bootstrap_MSVC.cake
 @if %ERRORLEVEL% == 0 (
   echo Success! Use bin\cakelisp.exe to build your programs
   goto build_user

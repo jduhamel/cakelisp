@@ -1,6 +1,6 @@
 #!/bin/sh
 
-CAKELISP_BOOTSTRAP_BIN=bin/cakelisp_bootstrap_v2
+CAKELISP_BOOTSTRAP_BIN=bin/cakelisp_bootstrap_v3
 CC=g++
 LINK=g++
 
