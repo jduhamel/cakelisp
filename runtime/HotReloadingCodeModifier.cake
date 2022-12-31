@@ -63,7 +63,7 @@
                                           &return bool)
   (var verbose bool false)
 
-  (get-or-create-comptime-var modified-vars bool false)
+  (get-or-create-comptime-var environment modified-vars bool false)
   (when (deref modified-vars) ;; Modify variables only once
     (return true))
   (set (deref modified-vars) true)
@@ -71,7 +71,8 @@
   (fprintf stderr "HotReloading: Modifying code for hot-reloading.\n")
   (fprintf stderr "Subsequent modifications will not be hot-reloading safe\n")
 
-  (get-or-create-comptime-var modules-with-import (template (in std unordered_map) (in std string) int))
+  (get-or-create-comptime-var environment modules-with-import
+                              (template (in std unordered_map) (in std string) int))
 
   (defstruct modify-definition
     name (in std string)

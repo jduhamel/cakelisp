@@ -291,8 +291,8 @@ This allows you to move things around as you like without having to update all t
 Next, let's invoke the variable creation macro. You can look at its signature to see what you need to provide:
 
 #+BEGIN_SRC lisp
-  (defmacro get-or-create-comptime-var (bound-var-name (ref symbol) var-type (ref any)
-                                      &optional initializer-index (index any))
+  (defmacro get-or-create-comptime-var (environment-access any bound-var-name (ref symbol) var-type (ref any)
+                                        &optional initializer-index (index any))
 #+END_SRC
 
 It looks just like a regular variable declaration, only this one will share the variable's value during the entire compile-time phase.
@@ -302,7 +302,7 @@ Let's create our lookup list. We'll use a C++ ~std::vector~, as it is common in 
 #+BEGIN_SRC lisp
   (defmacro defcommand (command-name symbol arguments array &rest body any)
 
-    (get-or-create-comptime-var command-table (template (in std vector) (addr (const Token))))
+    (get-or-create-comptime-var environment command-table (template (in std vector) (addr (const Token))))
     (call-on-ptr push_back command-table command-name)
 
     (tokenize-push output
@@ -356,7 +356,7 @@ From our previous note on ~post-references-resolved~ we learned that our hook ca
 
 #+BEGIN_SRC lisp
   (defun-comptime create-command-lookup-table (environment (ref EvaluatorEnvironment) &return bool)
-    (get-or-create-comptime-var command-table-already-created bool false)
+    (get-or-create-comptime-var environment command-table-already-created bool false)
     (when (deref command-table-already-created)
       (return true))
     (set (deref command-table-already-created) true)
@@ -371,12 +371,12 @@ Let's get our command table and make a loop to iterate over it, printing each co
 
 #+BEGIN_SRC lisp
   (defun-comptime create-command-lookup-table (environment (ref EvaluatorEnvironment) &return bool)
-    (get-or-create-comptime-var command-table-already-created bool false)
+    (get-or-create-comptime-var environment command-table-already-created bool false)
     (when (deref command-table-already-created)
       (return true))
     (set (deref command-table-already-created) true)
 
-    (get-or-create-comptime-var command-table (template (in std vector) (addr (const Token))))
+    (get-or-create-comptime-var environment command-table (template (in std vector) (addr (const Token))))
     (for-in command-name (addr (const Token)) (deref command-table)
       (printFormattedToken stderr (deref command-name))
       (fprintf stderr "\n"))
@@ -440,12 +440,12 @@ Let's output the generated command data to the console to make sure it's good. H
 
 #+BEGIN_SRC lisp
   (defun-comptime create-command-lookup-table (environment (ref EvaluatorEnvironment) &return bool)
-    (get-or-create-comptime-var command-table-already-created bool false)
+    (get-or-create-comptime-var environment command-table-already-created bool false)
     (when (deref command-table-already-created)
       (return true))
     (set (deref command-table-already-created) true)
 
-    (get-or-create-comptime-var command-table (template (in std vector) (addr (const Token))))
+    (get-or-create-comptime-var environment command-table (template (in std vector) (addr (const Token))))
 
     (var command-data (addr (template (in std vector) Token)) (new (template (in std vector) Token)))
     (call-on push_back (field environment comptimeTokens) command-data)

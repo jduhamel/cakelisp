@@ -36,13 +36,15 @@
 
 ;; A global and module-local variable "defer"
 (defmacro before-exit (work-body array)
-  (get-or-create-comptime-var before-exit-work (template (in std vector) (addr (const Token))))
+  (get-or-create-comptime-var environment before-exit-work
+                              (template (in std vector) (addr (const Token))))
   (call-on push_back (deref before-exit-work) work-body)
   (return true))
 
 ;; Run the deferred code
 (defmacro run-before-exit-work ()
-  (get-or-create-comptime-var before-exit-work (template (in std vector) (addr (const Token))))
+  (get-or-create-comptime-var environment before-exit-work
+                              (template (in std vector) (addr (const Token))))
   ;; TODO: Should we sort it eventually?
   (for-in start-work-token (addr (const Token)) (deref before-exit-work)
     (tokenize-push output
@@ -470,7 +472,8 @@
   (when (= 0 (call-on compare invocation-name
                       "output-aliased-c-function-invocation"))
     (return true))
-  (get-or-create-comptime-var c-function-aliases (template (in std unordered_map) (in std string) (in std string)))
+  (get-or-create-comptime-var environment c-function-aliases
+                              (template (in std unordered_map) (in std string) (in std string)))
   (def-type-alias FunctionAliasMap (template (in std unordered_map) (in std string) (in std string)))
 
   (var alias-func-pair (in FunctionAliasMap iterator)
@@ -517,7 +520,8 @@
   ;; alias, we can set the generators table to it
   (output-aliased-c-function-invocation)
 
-  (get-or-create-comptime-var c-function-aliases (template (in std unordered_map) (in std string) (in std string)))
+  (get-or-create-comptime-var environment c-function-aliases
+                              (template (in std unordered_map) (in std string) (in std string)))
   (set (at (field alias contents) (deref c-function-aliases)) (field underlying-func-name contents))
 
   ;; (Logf "aliasing %s to %s\n" (call-on c_str (field underlying-func-name contents))
@@ -603,7 +607,7 @@
   (when (and arguments
              (= 0 (call-on compare (path arguments > contents) "for-dependencies")))
     (return true))
-  (get-or-create-comptime-var c-forward-macro-functions
+  (get-or-create-comptime-var environment c-forward-macro-functions
                               (template (in std unordered_map) (in std string) (in std string)))
   ;; We spoofed the macro call, now we need to rename the function
   (var function-to-call Token (at (+ 1 startTokenIndex) tokens))
@@ -632,7 +636,7 @@
     tokens (ref (const (template (in std vector) Token))) startTokenIndex int
     output (ref (template (in std vector) Token))
     &return bool))
-  (get-or-create-comptime-var c-forward-macro-functions
+  (get-or-create-comptime-var environment c-forward-macro-functions
                               (template (in std unordered_map) (in std string) (in std string)))
   (set (at (path macro-name > contents) (deref c-forward-macro-functions))
        (path function-to-call > contents))

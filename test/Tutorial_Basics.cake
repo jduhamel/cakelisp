@@ -10,7 +10,7 @@
 
 (defmacro defcommand (command-name symbol arguments array &rest body any)
 
-  (get-or-create-comptime-var command-table (template (in std vector) (addr (const Token))))
+  (get-or-create-comptime-var environment command-table (template (in std vector) (addr (const Token))))
   (call-on-ptr push_back command-table command-name)
 
   (tokenize-push output
@@ -22,12 +22,12 @@
   (fprintf stderr "your name.\n"))
 
 (defun-comptime create-command-lookup-table (environment (ref EvaluatorEnvironment) &return bool)
-  (get-or-create-comptime-var command-table-already-created bool false)
+  (get-or-create-comptime-var environment command-table-already-created bool false)
   (when (deref command-table-already-created)
     (return true))
   (set (deref command-table-already-created) true)
 
-  (get-or-create-comptime-var command-table (template (in std vector) (addr (const Token))))
+  (get-or-create-comptime-var environment command-table (template (in std vector) (addr (const Token))))
 
   (var command-data (addr (template std::vector Token)) (new (template std::vector Token)))
   (call-on push_back (field environment comptimeTokens) command-data)

@@ -3,8 +3,8 @@
 ;; Binds the variable's address to the named var
 ;; Note that this causes the caller's function to return false if the binding failed
 ;; TODO: This is madness, or close to it. All this for every comptime variable reference...
-(defmacro get-or-create-comptime-var (bound-var-name (ref symbol) var-type (ref any)
-                                      &optional initializer-index (index any))
+(defmacro get-or-create-comptime-var (environment-access any bound-var-name (ref symbol)
+                                      var-type (ref any) &optional initializer-index (index any))
   (unless (field environment moduleManager)
     (return false))
 
@@ -127,13 +127,13 @@
   (tokenize-push output
     (var (token-splice-addr bound-var-name) (addr (token-splice-addr var-type)) null)
     (scope
-     (unless (GetCompileTimeVariable environment
+     (unless (GetCompileTimeVariable (token-splice environment-access)
                                      (token-splice-addr var-name) (token-splice-addr var-type-str)
                                      (type-cast (addr (token-splice-addr bound-var-name)) (addr (addr void))))
        (set (token-splice-addr bound-var-name) (new (token-splice-addr var-type)))
        (token-splice-array initializer)
        (var destroy-func-name (addr (const char)) (token-splice-addr destroy-var-func-name-str))
-       (unless (CreateCompileTimeVariable environment
+       (unless (CreateCompileTimeVariable (token-splice environment-access)
                                           (token-splice-addr var-name) (token-splice-addr var-type-str)
                                           (type-cast (token-splice-addr bound-var-name) (addr void))
                                           destroy-func-name)

@@ -35,15 +35,15 @@
 ;;   (return 42))
 
 (defmacro magic-number ()
-  (get-or-create-comptime-var test-var std::string)
-  (get-or-create-comptime-var test-crazy-var (addr (const (addr (template (in std vector) int)))))
+  (get-or-create-comptime-var environment test-var std::string)
+  (get-or-create-comptime-var environment test-crazy-var (addr (const (addr (template (in std vector) int)))))
   (set (deref test-var) "Yeah")
   (tokenize-push output (fprintf stderr "The magic number is 42\n"))
   (return true))
 
 (defun-comptime sabotage-main-printfs (environment (ref EvaluatorEnvironment)
                                        &return bool)
-  (get-or-create-comptime-var test-var std::string)
+  (get-or-create-comptime-var environment test-var std::string)
   (fprintf stderr "%s is the message\n" (call-on-ptr c_str test-var))
   (var old-definition-tags (template (in std vector) std::string))
   ;; Scope to ensure that definition-it and definition are not referred to after
@@ -114,7 +114,7 @@
 ;; (rename-builtin "var" "badvar")
 ;; (defmacro var ()
 ;;   ;; Var cannot be used within var, because it's undefined. This excludes a lot of macros
-;;   ;; (get-or-create-comptime-var var-replacements (template (in std vector) (addr (const Token))))
+;;   ;; (get-or-create-comptime-var environment var-replacements (template (in std vector) (addr (const Token))))
 ;;   ;; (for-in replaced-token (addr (const Token)) (addr var-replacements)
 ;;           ;; (NoteAtToken (deref replaced-token) "Replaced already"))
 

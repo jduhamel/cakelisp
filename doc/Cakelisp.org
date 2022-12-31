@@ -281,7 +281,7 @@ There are four major types of compile-time code execution:
 ** Destructuring signatures
 Macros and generators use a special syntax for their signatures. For example:
 #+BEGIN_SRC lisp
-  (defmacro get-or-create-comptime-var (bound-var-name (ref symbol) var-type (ref any)
+  (defmacro get-or-create-comptime-var (environment-access any bound-var-name (ref symbol) var-type (ref any)
                                         &optional initializer-index (index any))
     (return true))
 #+END_SRC
@@ -312,7 +312,7 @@ Note that you have unlimited control over how you process the provided tokens ar
 
 Here's an invocation of that macro:
 #+BEGIN_SRC lisp
-(get-or-create-comptime-var modified-vars bool false)
+(get-or-create-comptime-var environment modified-vars bool false)
 #+END_SRC
 
 The binding would result like so:
