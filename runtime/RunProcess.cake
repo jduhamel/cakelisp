@@ -70,7 +70,7 @@
       'no-resolve
       ;; +1 because we want the inside of the command
       (token-splice-rest (+ 1 command) tokens))
-     (unless (= 0 (runProcess process-command (token-splice status-pointer)))
+     (unless (= 0 (runProcess (addr process-command) (token-splice status-pointer)))
        (token-splice-rest on-failure-to-start tokens))))
   (return true))
 
