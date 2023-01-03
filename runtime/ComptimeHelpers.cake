@@ -99,9 +99,6 @@
         (delete (type-cast data (addr (token-splice-addr var-type))))))
 
     (var destruction-func-context EvaluatorContext context)
-    ;; This doesn't cause the required to propagate because comptime functions are lazily required,
-    ;; even in module scope, because they're super slow to build (don't build if you don't use)
-    (set (field destruction-func-context isRequired) true)
     (set (field destruction-func-context scope) EvaluatorScope_Module)
     (set (field destruction-func-context definitionName)
          (addr (path environment . moduleManager > globalPseudoInvocationName)))
@@ -114,7 +111,12 @@
                                              destruction-func-context
                                              (deref destruction-func-def) 0
                                              (deref throwaway-output)))
-      (return false)))
+      (return false))
+
+    ;; Make sure the environment builds this so it can call it later to free the variable.
+    (set (at (call-on c_str (field destroy-var-func-name-str contents))
+             (field environment requiredCompileTimeFunctions))
+         "compile time variable destructor"))
 
   (var initializer (template (in std vector) Token))
   (when (!= initializer-index -1)

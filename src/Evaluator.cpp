@@ -1544,17 +1544,34 @@ bool BuildEvaluateReferences(EvaluatorEnvironment& environment, int& numErrorsOu
 	for (ObjectDefinitionPair& definitionPair : environment.definitions)
 	{
 		ObjectDefinition& definition = definitionPair.second;
+		if (logging.compileTimeBuildReasons)
+			Logf("Checking if %s should be built\n", definitionPair.first.c_str());
+
 		// Does it need to be built?
 		if (!definition.isRequired)
+		{
+			if (logging.compileTimeBuildReasons)
+				Logf("\t%s is not required\n", definitionPair.first.c_str());
 			continue;
+		}
 
 		// Is it already in the environment?
 		if (definition.isLoaded)
+		{
+			if (logging.compileTimeBuildReasons)
+				Logf("\t%s is already loaded\n", definitionPair.first.c_str());
 			continue;
+		}
 
 		if (definition.forbidBuild)
+		{
+			if (logging.compileTimeBuildReasons)
+				Logf("\t%s is forbidden to be built\n", definitionPair.first.c_str());
 			continue;
+		}
 
+		if (logging.compileTimeBuildReasons)
+			Logf("\t%s should be built\n", definitionPair.first.c_str());
 		definitionsToCheck.push_back(&definition);
 	}
 
@@ -1619,7 +1636,8 @@ bool BuildEvaluateReferences(EvaluatorEnvironment& environment, int& numErrorsOu
 							if (referenceStatus.guessState != GuessState_Resolved)
 							{
 								if (logging.compileTimeBuildReasons)
-									Log("\tRequired code has been loaded\n");
+									Logf("\tRequired code '%s' has been loaded\n",
+									    referenceStatus.name->contents.c_str());
 
 								hasRelevantChangeOccurred = true;
 							}

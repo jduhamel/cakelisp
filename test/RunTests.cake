@@ -24,7 +24,8 @@
      (array "Build dependencies" "test/BuildDependencies.cake")
      (array "Cpp helpers" "test/CppHelpersTest.cake")
      (array "Tutorial: Basics" "test/Tutorial_Basics.cake")
-     (array "Defer" "test/Defer.cake")))
+     (array "Defer" "test/Defer.cake")
+     (array "Destroy comptime variables" "test/DestroyComptimeVariables.cake")))
 
   (var platform-config (addr (const char))
     (comptime-cond
