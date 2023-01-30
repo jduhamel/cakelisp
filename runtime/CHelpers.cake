@@ -395,6 +395,25 @@
      (array KeywordNoSpace "\n" -1)))
   (return (c-statement-out define-statement)))
 
+(defgenerator c-preprocessor-define-constant-global (define-name symbol value symbol)
+  (addStringOutput (field output header) "#define" StringOutMod_SpaceAfter define-name)
+  (addStringOutput (field output header) (path define-name > contents)
+                   (type-cast (bit-or StringOutMod_ConvertVariableName StringOutMod_SpaceAfter)
+                              StringOutputModifierFlags)
+                   define-name)
+  (addStringOutput (field output header) (path value > contents)
+                   StringOutMod_None
+                   value)
+  ;; TODO: Cannot actually evaluate into the header. Stupid.
+  ;; (var expression-context EvaluatorContext context)
+  ;; (set (field expression-context scope) EvaluatorScope_ExpressionsOnly)
+  ;; (unless (= (EvaluateGenerate_Recursive environment expression-context
+  ;;                                        tokens value output)
+  ;;            0)
+  ;;   (return false))
+  (addLangTokenOutput (field output header) StringOutMod_NewlineAfter define-name)
+  (return true))
+
 (defgenerator c-preprocessor-undefine (define-name symbol)
   (var define-statement (const (array CStatementOperation))
     (array
