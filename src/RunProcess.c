@@ -415,8 +415,6 @@ int runProcess(const RunProcessArguments* arguments, int* statusOut)
 	newProcess->hChildStd_OUT_Rd = hChildStd_OUT_Rd;
 	newProcess->command = commandLineString;
 
-	free(commandLineString);
-
 	return 0;
 #endif
 	return 1;
@@ -516,7 +514,7 @@ void waitForAllProcessesClosed(SubprocessOnOutputFunc onOutput)
 		}
 		else if (exitCode != 0)
 		{
-			Logf("command: %s\n", process->command);
+			Logf("%s\n", process->command);
 		}
 
 		*(process->statusOut) = exitCode;
