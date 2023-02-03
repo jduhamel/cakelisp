@@ -16,7 +16,11 @@
 #error Platform support is needed for running subprocesses
 #endif
 
+#if WINDOWS
+__declspec(dllimport) char* __cdecl strdup(const char* s);
+#else
 char* strdup(const char* s);
+#endif
 
 // Some helpers copied from Utilities.hpp so I don't need C++
 #define ArraySize(array) sizeof((array)) / sizeof((array)[0])
@@ -400,7 +404,7 @@ int runProcess(const RunProcessArguments* arguments, int* statusOut)
 	CloseHandle(hChildStd_IN_Wr);
 
 	Subprocess* newProcess = getFreeSubprocessSlot();
-	if (!newSubprocess)
+	if (!newProcess)
 	{
 		Log("RunProcess ran out of free subprocess slots\n");
 		free(commandLineString);
@@ -419,7 +423,7 @@ int runProcess(const RunProcessArguments* arguments, int* statusOut)
 }
 
 #ifdef WINDOWS
-void readProcessPipe(Subprocess& process, SubprocessOnOutputFunc onOutput)
+void readProcessPipe(Subprocess* process, SubprocessOnOutputFunc onOutput)
 {
 	HANDLE hParentStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -430,7 +434,7 @@ void readProcessPipe(Subprocess& process, SubprocessOnOutputFunc onOutput)
 		DWORD bytesRead = 0;
 		DWORD bytesWritten = 0;
 		bool success =
-		    ReadFile(process.hChildStd_OUT_Rd, buffer, sizeof(buffer) - 1, &bytesRead, NULL);
+		    ReadFile(process->hChildStd_OUT_Rd, buffer, sizeof(buffer) - 1, &bytesRead, NULL);
 		if (!success || bytesRead == 0)
 		{
 			encounteredError = !success;
@@ -499,10 +503,10 @@ void waitForAllProcessesClosed(SubprocessOnOutputFunc onOutput)
 		const int pollProcessTimeMilliseconds = 50;
 		while (WAIT_TIMEOUT ==
 		       WaitForSingleObject(process->processInfo->hProcess, pollProcessTimeMilliseconds))
-			readProcessPipe(*process, onOutput);
+			readProcessPipe(process, onOutput);
 
 		// If the wait was ended but wasn't a timeout, we still need to read out
-		readProcessPipe(*process, onOutput);
+		readProcessPipe(process, onOutput);
 
 		DWORD exitCode = 0;
 		if (!GetExitCodeProcess(process->processInfo->hProcess, &exitCode))
@@ -512,7 +516,7 @@ void waitForAllProcessesClosed(SubprocessOnOutputFunc onOutput)
 		}
 		else if (exitCode != 0)
 		{
-			Logf("%s\n", process->command.c_str());
+			Logf("command: %s\n", process->command);
 		}
 
 		*(process->statusOut) = exitCode;

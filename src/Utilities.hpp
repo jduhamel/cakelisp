@@ -42,8 +42,17 @@ void printIndentToDepth(int depth);
 // TODO Replace with strcat()?
 #define PrintBuffer(buffer, output) SafeSnprintf(buffer, sizeof(buffer), "%s", output)
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 bool writeCharToBuffer(char c, char** at, char* bufferStart, int bufferSize);
 bool writeStringToBuffer(const char* str, char** at, char* bufferStart, int bufferSize);
+
+#ifdef __cplusplus
+}
+#endif
 
 #ifdef WINDOWS
 #define StrCatSafe(bufferOut, bufferSize, strToAppend) strcat_s(bufferOut, bufferSize, strToAppend)
