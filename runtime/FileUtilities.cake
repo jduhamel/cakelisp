@@ -1,4 +1,4 @@
-(c-import "<stdio.h>" "<string.h>" "<assert.h>"
+(c-import "<stdio.h>" "<string.h>" "<assert.h>" "<malloc.h>"
           ;; FILE*, bool TODO: How can I remove this from header?
           &with-decls "<stdio.h>" "<stdbool.h>")
 
@@ -42,7 +42,7 @@
 		 ;; The path will be relative to the binary's working directory
 		 (return (realpath filePath null)))))
    ('Windows
-	(var absolutePath (addr char) (type-cast (calloc MAX_PATH_LENGTH (sizeof char)) (addr char)))
+	(var absolutePath (addr char) (type-cast (malloc MAX_PATH_LENGTH) (addr char)))
 	(var isValid bool false)
 	(if fromDirectory
         (scope
@@ -80,8 +80,8 @@
 	  (set (at (- num-printed 1) converted-path) 0))
     (path-convert-to-backward-slashes converted-path)
 
-	(var drive (array _MAX_DRIVE char))
-	(var dir (array _MAX_DIR char))
+	(var drive (array MAX_PATH_LENGTH char))
+	(var dir (array MAX_PATH_LENGTH char))
 	;; char fname[_MAX_FNAME];
 	;; char ext[_MAX_EXT];
 	(_splitpath_s converted-path drive (sizeof drive) dir (sizeof dir)
