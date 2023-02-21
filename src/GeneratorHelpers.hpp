@@ -90,7 +90,8 @@ CAKELISP_API void PushBackTokenExpression(std::vector<Token>& output, const Toke
 CAKELISP_API void PushBackAllTokenExpressions(std::vector<Token>& output, const Token* startToken,
                                               const Token* finalToken);
 
-void addModifierToStringOutput(StringOutput& operation, StringOutputModifierFlags flag);
+CAKELISP_API void addModifierToStringOutput(StringOutput& operation,
+                                            StringOutputModifierFlags flag);
 
 CAKELISP_API void addStringOutput(std::vector<StringOutput>& output, const std::string& symbol,
                                   StringOutputModifierFlags modifiers, const Token* startToken);
@@ -128,12 +129,13 @@ CAKELISP_API bool outputFunctionArguments(EvaluatorEnvironment& environment,
                                           RequiredFeatureExposure exposure);
 
 // The exposure determines how the type is going to be used, which helps inform RequiredFeatures
-bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
-                                      const EvaluatorContext& context,
-                                      const std::vector<Token>& tokens, int startTokenIndex,
-                                      bool allowArray, std::vector<StringOutput>& typeOutput,
-                                      std::vector<StringOutput>& afterNameOutput,
-                                      RequiredFeatureExposure exposure);
+CAKELISP_API bool tokenizedCTypeToString_Recursive(EvaluatorEnvironment& environment,
+                                                   const EvaluatorContext& context,
+                                                   const std::vector<Token>& tokens,
+                                                   int startTokenIndex, bool allowArray,
+                                                   std::vector<StringOutput>& typeOutput,
+                                                   std::vector<StringOutput>& afterNameOutput,
+                                                   RequiredFeatureExposure exposure);
 
 bool CompileTimeFunctionSignatureMatches(EvaluatorEnvironment& environment, const Token& errorToken,
                                          const char* compileTimeFunctionName,

@@ -16,9 +16,7 @@
 #error Platform support is needed for running subprocesses
 #endif
 
-#if WINDOWS
-__declspec(dllimport) char* __cdecl strdup(const char* s);
-#else
+#ifndef WINDOWS
 char* strdup(const char* s);
 #endif
 
