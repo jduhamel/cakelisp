@@ -255,7 +255,7 @@
 
 (defgenerator defenum (name symbol
                        &rest enum-values (index any))
-  (var is-global bool (!= context.scope EvaluatorScope_Body))
+  (var is-global bool (!= (field context scope) EvaluatorScope_Body))
   (return (defenum-internal environment
           context
           tokens
@@ -276,6 +276,60 @@
           is-global
           name
           enum-values)))
+
+;; Declare a variable which can be accessed globally, but is not exposed in the header.
+(defgenerator var-hidden-global (name symbol
+                                 ;; global-type-index (index array)
+                                 module-type-index (index array)
+                                 value-index (index array))
+  ;; Define an array in the module and expose it as a pointer
+  ;; e.g. in .c:
+  ;;   int myArray[] = {1 2 3};
+  ;; in .h:
+  ;;   int* myArray;
+  ;; This is a hack to allow arrays to be declared without needing the type in the header.
+  ;; I originally thought to declare it as a pointer, but C doesn't like that.
+  ;; Instead, you'll need to declare the extern array in the referencing module.
+  ;; (var global-type-output (template (in std vector) StringOutput))
+  ;; (var global-type-output-after-name (template (in std vector) StringOutput))
+  ;; (unless (tokenizedCTypeToString_Recursive
+  ;;          environment context tokens global-type-index
+  ;;          true global-type-output global-type-output-after-name
+  ;;          RequiredFeatureExposure_Global)
+  ;;   (return false))
+  ;; (addModifierToStringOutput (call-on back global-type-output) StringOutMod_SpaceAfter)
+  ;; (addStringOutput (field output header) "extern" StringOutMod_SpaceAfter
+  ;;   	           (addr (at global-type-index tokens)))
+  ;; (PushBackAll (field output header) global-type-output)
+  ;; (addStringOutput (field output header) (path name > contents)
+  ;;                  StringOutMod_ConvertVariableName name)
+  ;; (PushBackAll (field output header) global-type-output-after-name)
+  ;; (addLangTokenOutput (field output header) StringOutMod_EndStatement name)
+
+  (var module-type-output (template (in std vector) StringOutput))
+  (var module-type-output-after-name (template (in std vector) StringOutput))
+  (unless (tokenizedCTypeToString_Recursive
+           environment context tokens module-type-index
+	       true module-type-output module-type-output-after-name
+	       RequiredFeatureExposure_ModuleLocal)
+    (return false))
+  (addModifierToStringOutput (call-on back module-type-output) StringOutMod_SpaceAfter)
+  (PushBackAll (field output source) module-type-output)
+  (addStringOutput (field output source) (path name > contents)
+                   StringOutMod_ConvertVariableName name)
+  (PushBackAll (field output source) module-type-output-after-name)
+
+  ;; Value
+  (addLangTokenOutput (field output source) StringOutMod_SpaceAfter (addr (at value-index tokens)))
+  (addStringOutput (field output source) "=" StringOutMod_SpaceAfter (addr (at value-index tokens)))
+  (var expression-context EvaluatorContext context)
+  (set (field expression-context scope) EvaluatorScope_ExpressionsOnly)
+  (unless (= 0 (EvaluateGenerate_Recursive
+                environment expression-context tokens value-index
+		        output))
+    (return false))
+  (addLangTokenOutput (field output source) StringOutMod_EndStatement name)
+  (return true))
 
 ;;
 ;; Iteration/Looping
