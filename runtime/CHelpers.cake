@@ -335,11 +335,26 @@
 ;; Iteration/Looping
 ;;
 
+;; Pass (none) for initializer if it is unused
 (defgenerator c-for (initializer (arg-index any)
                      conditional (arg-index any)
                      update (arg-index any)
                      ;; Cannot be optional due to CStatementOutput limitation
                      &rest body (arg-index any))
+  (when (= 0 (call-on compare (field (at (+ 2 initializer startTokenIndex) tokens) contents) "none"))
+    (var no-initializer-statement (array (const CStatementOperation))
+      (array
+       (array Keyword "for" -1)
+       (array OpenParen null -1)
+       (array Keyword ";" -1)
+       (array Expression null conditional)
+       (array Keyword ";" -1)
+       (array Expression null update)
+       (array CloseParen null -1)
+       (array OpenContinueBreakableScope null -1)
+       (array Body null body)
+       (array CloseContinueBreakableScope null -1)))
+    (return (c-statement-out no-initializer-statement)))
   (var statement (array (const CStatementOperation))
     (array
      (array Keyword "for" -1)
