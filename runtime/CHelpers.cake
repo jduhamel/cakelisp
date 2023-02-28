@@ -277,6 +277,48 @@
           name
           enum-values)))
 
+(defmacro defenum-and-string-table (name symbol &rest body symbol)
+  (tokenize-push output
+    (defenum (token-splice name)
+      (token-splice-rest body tokens)))
+  (var end-invocation-index int (FindCloseParenTokenIndex tokens startTokenIndex))
+  (var strings (template (in std vector) Token))
+  (each-token-argument-in tokens (- body (addr (at 0 tokens))) end-invocation-index current-index
+    (var current-token (addr (const Token)) (addr (at current-index tokens)))
+    (var new-string Token (deref current-token))
+    (set (field new-string type) TokenType_String)
+    (call-on push_back strings new-string))
+  (var strings-name Token (deref name))
+  (call-on append (field strings-name contents) "--strings")
+  (var strings-count-name Token (deref name))
+  (call-on append (field strings-count-name contents) "--strings-count")
+  (var num-strings Token (deref name))
+  (token-contents-snprintf num-strings "%d"
+                           (type-cast (call-on size strings) int))
+  (tokenize-push output
+    (var-global (token-splice-addr strings-name) (array (addr (const char)))
+      (array (token-splice-array strings)))
+    (var-global (token-splice-addr strings-count-name) int (token-splice-addr num-strings)))
+  (return true))
+
+(defmacro defenum-and-string-table-local (name symbol &rest body symbol)
+  (tokenize-push output
+    (defenum-local (token-splice name)
+      (token-splice-rest body tokens)))
+  (var end-invocation-index int (FindCloseParenTokenIndex tokens startTokenIndex))
+  (var strings (template (in std vector) Token))
+  (each-token-argument-in tokens (- body (addr (at 0 tokens))) end-invocation-index current-index
+    (var current-token (addr (const Token)) (addr (at current-index tokens)))
+    (var new-string Token (deref current-token))
+    (set (field new-string type) TokenType_String)
+    (call-on push_back strings new-string))
+  (var strings-name Token (deref name))
+  (call-on append (field strings-name contents) "--strings")
+  (tokenize-push output
+    (var (token-splice-addr strings-name) (array (addr (const char)))
+      (array (token-splice-array strings))))
+  (return true))
+
 ;; Declare a variable which can be accessed globally, but is not exposed in the header.
 (defgenerator var-hidden-global (name symbol
                                  ;; global-type-index (index array)
