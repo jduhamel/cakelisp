@@ -38,26 +38,6 @@
 
      (when (= (path current-type-token > type) TokenType_Symbol)
        (cond
-         ((std-str-equals (path current-type-token > contents) "*")
-          (unless (writeStringToBufferErrorToken "ptr-to-"
-                                                 (addr type-name-string-write-head) type-to-name-string-buffer
-                                                 (sizeof type-to-name-string-buffer) (deref current-type-token))
-            (return false)))
-         ((std-str-equals (path current-type-token > contents) "<>")
-          (unless (writeStringToBufferErrorToken "tmpl-of-"
-                                                 (addr type-name-string-write-head) type-to-name-string-buffer
-                                                 (sizeof type-to-name-string-buffer) (deref current-type-token))
-            (return false)))
-         ((std-str-equals (path current-type-token > contents) "&")
-          (unless (writeStringToBufferErrorToken "ref-to-"
-                                                 (addr type-name-string-write-head) type-to-name-string-buffer
-                                                 (sizeof type-to-name-string-buffer) (deref current-type-token))
-            (return false)))
-         ((std-str-equals (path current-type-token > contents) "[]")
-          (unless (writeStringToBufferErrorToken "array-of-"
-                                                 (addr type-name-string-write-head) type-to-name-string-buffer
-                                                 (sizeof type-to-name-string-buffer) (deref current-type-token))
-            (return false)))
          ((std-str-equals (path current-type-token > contents) "const")
           (unless (writeStringToBufferErrorToken "const-"
                                                  (addr type-name-string-write-head) type-to-name-string-buffer
@@ -233,6 +213,27 @@
          (< (token-splice iterator-name) (token-splice end-token-index))
          (set (token-splice iterator-name)
               (getNextArgument (token-splice token-array iterator-name end-token-index)))
+       (token-splice-rest body tokens))))
+  (return true))
+
+(defmacro each-token-argument-in-range (token-array any
+                                        start-opening-paren-index any
+                                        first-argument-index any
+                                        end-range-name symbol
+                                        index-name symbol
+                                        token-pointer-name symbol
+                                        &rest body any)
+  (tokenize-push output
+    (scope
+     (var (token-splice end-range-name) int
+       (FindCloseParenTokenIndex
+        (token-splice token-array) (token-splice start-opening-paren-index)))
+     (c-for (var (token-splice index-name) int (token-splice first-argument-index))
+         (< (token-splice index-name) (token-splice end-range-name))
+         (set (token-splice index-name)
+              (getNextArgument (token-splice token-array index-name end-range-name)))
+       (var (token-splice token-pointer-name) (addr (const Token))
+         (addr (at (token-splice index-name token-array))))
        (token-splice-rest body tokens))))
   (return true))
 
