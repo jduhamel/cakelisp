@@ -30,10 +30,12 @@
     (put 'each-in-closed-interval-descending 'lisp-indent-function 3)
     (put 'each-in-array 'lisp-indent-function 2)
     (put 'each-item-addr-in-array 'lisp-indent-function 4)
+    (put 'each-item-addr-in-addr-array 'lisp-indent-function 5)
     (put 'each-item-in-array 'lisp-indent-function 4)
     (put 'each-char-in-string 'lisp-indent-function 2)
     (put 'each-char-in-string-const 'lisp-indent-function 2)
     (put 'c-for 'lisp-indent-function 3)
+    (put 'each-token-argument-in-range 'lisp-indent-function 6)
 
     (put 'run-process-sequential-or 'lisp-indent-function 1)
     (put 'runtime-run-process-sequential-or 'lisp-indent-function 1)
