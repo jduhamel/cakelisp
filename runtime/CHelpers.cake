@@ -436,6 +436,18 @@
       (token-splice-rest body tokens)))
   (return true))
 
+;; Made for when an array and size are passed to a function etc.
+(defmacro each-item-addr-in-addr-array (array-name any array-size any
+                                        iterator-name symbol
+                                        item-name symbol item-type any
+                                        &rest body any)
+  (tokenize-push output
+    (each-in-range (token-splice array-size) (token-splice iterator-name)
+      (var (token-splice item-name) (token-splice item-type)
+        (addr (at (token-splice iterator-name) (token-splice array-name))))
+      (token-splice-rest body tokens)))
+  (return true))
+
 ;; Note: Will reevaluate the range expression each iteration
 (defmacro each-in-range (range any iterator-name symbol &rest body any)
   (tokenize-push output
