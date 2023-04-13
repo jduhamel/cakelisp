@@ -322,7 +322,7 @@
 ;; Declare a variable which can be accessed globally, but is not exposed in the header.
 (defgenerator var-hidden-global (name symbol
                                  ;; global-type-index (index array)
-                                 module-type-index (index array)
+                                 module-type-index (index any)
                                  value-index (index array))
   ;; Define an array in the module and expose it as a pointer
   ;; e.g. in .c:
