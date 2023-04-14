@@ -162,8 +162,9 @@
                                    &return bool)
   (if-open-file-scoped filename "rb" in-file
     (scope
-     (return (= 1 (fread buffer buffer-size
-                         1 in-file))))
+     ;; Necessary because if we return right away our deferred close will close the file before we read!
+     (var result int (fread buffer buffer-size 1 in-file))
+     (return (= 1 result)))
     (scope
      (return false))))
 
