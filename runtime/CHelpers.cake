@@ -720,6 +720,14 @@
     (__alignof__ (token-splice type-or-field)))
   (return true))
 
+(defmacro swap (a any b any type any)
+  (tokenize-push output
+    (scope
+     (var swap-temp (token-splice type) (token-splice a))
+     (set (token-splice a) (token-splice b))
+     (set (token-splice b) swap-temp)))
+  (return true))
+
 ;;
 ;; Helpers for meta stuff, e.g. the file and line number of the token itself
 ;;
