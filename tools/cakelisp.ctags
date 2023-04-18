@@ -1,0 +1,64 @@
+# See https://docs.ctags.io/en/latest/man/ctags-optlib.7.html
+# To find what different kinds of things can be, see:
+# ctags-universal --list-kinds-full
+# To use:
+# ctags-universal --options=cakelisp.ctags --output-format=etags src/*
+
+# TODO:
+# - Enumerants
+# - Struct fields
+# - Function parameters
+# - Local variables
+
+--langdef=cakelisp
+--map-cakelisp=.cake
+
+# Copied from C and then modified
+#--kinddef-cakelisp=L,label,goto labels
+--kinddef-cakelisp=d,macro,macro definitions
+--kinddef-cakelisp=e,enumerator,enumerators (values inside an enumeration)
+--kinddef-cakelisp=f,function,function definitions
+--kinddef-cakelisp=g,enum,enumeration names
+--kinddef-cakelisp=h,header,included header files
+--kinddef-cakelisp=l,local,local variables
+--kinddef-cakelisp=m,member,struct, and union members
+#--kinddef-cakelisp=p,prototype,function prototypes
+--kinddef-cakelisp=s,struct,structure names
+--kinddef-cakelisp=t,typedef,typedefs
+#--kinddef-cakelisp=u,union,union names
+--kinddef-cakelisp=v,variable,variable definitions
+--kinddef-cakelisp=x,externvar,external and forward variable declarations
+--kinddef-cakelisp=z,parameter,function parameters inside function definitions
+
+--kinddef-cakelisp=c,comptimesymbol,symbols defined with comptime-define-symbol
+
+--regex-cakelisp=/\(defun ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
+--regex-cakelisp=/\(defun-local ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
+--regex-cakelisp=/\(defun-nodecl ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
+--regex-cakelisp=/\(def-c-function-alias ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
+--regex-cakelisp=/\(defun-comptime ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
+--regex-cakelisp=/\(defmacro ([a-zA-Z][a-zA-Z0-9\-]+)/\1/d/
+--regex-cakelisp=/\(defgenerator ([a-zA-Z][a-zA-Z0-9\-]+)/\1/d/
+
+--regex-cakelisp=/\(defstruct ([a-zA-Z][a-zA-Z0-9\-]+)/\1/s/
+--regex-cakelisp=/\(defstruct-local ([a-zA-Z][a-zA-Z0-9\-]+)/\1/s/
+--regex-cakelisp=/\(def-introspect-struct ([a-zA-Z][a-zA-Z0-9\-]+)/\1/s/
+--regex-cakelisp=/\(def-versioned-struct ([a-zA-Z][a-zA-Z0-9\-]+)/\1/s/
+--regex-cakelisp=/\(defenum ([a-zA-Z][a-zA-Z0-9\-]+)/\1/g/
+--regex-cakelisp=/\(defenum-local ([a-zA-Z][a-zA-Z0-9\-]+)/\1/g/
+--regex-cakelisp=/\(defenum-local ([a-zA-Z][a-zA-Z0-9\-]+)/\1/g/
+--regex-cakelisp=/\(def-type-alias ([a-zA-Z][a-zA-Z0-9\-]+)/\1/t/
+--regex-cakelisp=/\(def-type-alias-global ([a-zA-Z][a-zA-Z0-9\-]+)/\1/t/
+
+--regex-cakelisp=/\(var-global ([a-zA-Z][a-zA-Z0-9\-]+)/\1/v/
+
+# Should only capture variables at the beginning of the line, i.e. module-local variables
+# This will miss variables in e.g. a comptime-cond, but a more robust solution would require
+# keeping track of scope here, which I don't want to do.
+--regex-cakelisp=/^\(var ([a-zA-Z][a-zA-Z0-9\-]+)/\1/v/
+
+--regex-cakelisp=/\(comptime-define-symbol (['a-zA-Z][a-zA-Z0-9\-]+)/\1/c/
+
+# Augment the C++ parser to find *some* of the built-ins. C statement generator-based ones will not
+# work with this, unfortunately.
+--regex-c++=/environment.generators\["([a-zA-Z][a-zA-Z0-9\-]+)"\]/\1/f/
