@@ -1,63 +1,139 @@
-# See https://docs.ctags.io/en/latest/man/ctags-optlib.7.html
+# See https://docs.ctags.io/en/latest/optlib.html
+#
+# My version (there may be something wrong here):
+# Universal Ctags 0.0.0, Copyright (C) 2015 Universal Ctags Team
+# Universal Ctags is derived from Exuberant Ctags.
+# Exuberant Ctags 5.8, Copyright (C) 1996-2009 Darren Hiebert
+#   Compiled: Jan  6 2019, 23:23:29
+#   URL: https://ctags.io/
+#   Optional compiled features: +wildcards, +regex, +iconv, +option-directory, +xpath, +json, +interactive, +sandbox, +yaml
+#
 # To find what different kinds of things can be, see:
 # ctags-universal --list-kinds-full
 # To use:
-# ctags-universal --options=cakelisp.ctags --output-format=etags src/*
+# ctags-universal --options=Dependencies/cakelisp/tools/cakelisp.ctags --output-format=etags src/*
+# An example for gamelib projects:
+# ctags-universal --options=Dependencies/cakelisp/tools/cakelisp.ctags --output-format=etags src/* Dependencies/cakelisp/runtime/* Dependencies/cakelisp/src/* Dependencies/gamelib/src/*
 
 # TODO:
-# - Enumerants
-# - Struct fields
-# - Function parameters
-# - Local variables
+# - Struct fields (requires counting parens)
+# - Function parameters (requires counting parens)
+# - Local variables (requires counting parens)
 
 --langdef=cakelisp
 --map-cakelisp=.cake
 
 # Copied from C and then modified
 #--kinddef-cakelisp=L,label,goto labels
---kinddef-cakelisp=d,macro,macro definitions
+--kinddef-cakelisp=d,macro,macro or generator definitions and compile-time functions
 --kinddef-cakelisp=e,enumerator,enumerators (values inside an enumeration)
 --kinddef-cakelisp=f,function,function definitions
 --kinddef-cakelisp=g,enum,enumeration names
---kinddef-cakelisp=h,header,included header files
---kinddef-cakelisp=l,local,local variables
---kinddef-cakelisp=m,member,struct, and union members
+#--kinddef-cakelisp=h,header,included header files
+#--kinddef-cakelisp=l,local,local variables
+#--kinddef-cakelisp=m,member,struct, and union members
 #--kinddef-cakelisp=p,prototype,function prototypes
 --kinddef-cakelisp=s,struct,structure names
 --kinddef-cakelisp=t,typedef,typedefs
 #--kinddef-cakelisp=u,union,union names
 --kinddef-cakelisp=v,variable,variable definitions
---kinddef-cakelisp=x,externvar,external and forward variable declarations
---kinddef-cakelisp=z,parameter,function parameters inside function definitions
+#--kinddef-cakelisp=x,externvar,external and forward variable declarations
+#--kinddef-cakelisp=z,parameter,function parameters inside function definitions
 
 --kinddef-cakelisp=c,comptimesymbol,symbols defined with comptime-define-symbol
 
---regex-cakelisp=/\(defun ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
---regex-cakelisp=/\(defun-local ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
---regex-cakelisp=/\(defun-nodecl ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
---regex-cakelisp=/\(def-c-function-alias ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
---regex-cakelisp=/\(defun-comptime ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
---regex-cakelisp=/\(defmacro ([a-zA-Z][a-zA-Z0-9\-]+)/\1/d/
---regex-cakelisp=/\(defgenerator ([a-zA-Z][a-zA-Z0-9\-]+)/\1/d/
+# See https://docs.ctags.io/en/latest/optlib.html for documentation on these.
+# See
+# https://github.com/universal-ctags/ctags/blob/master/optlib/lex.ctags
+# ...or other files file that directory.
+# Unfortunately, these tables slow down ctags significantly.
+# The first declared table implicitly becomes the entered table.
+--_tabledef-cakelisp=toplevel
+--_tabledef-cakelisp=invocation
+--_tabledef-cakelisp=comment
+--_tabledef-cakelisp=enum
+--_tabledef-cakelisp=struct
 
---regex-cakelisp=/\(defstruct ([a-zA-Z][a-zA-Z0-9\-]+)/\1/s/
---regex-cakelisp=/\(defstruct-local ([a-zA-Z][a-zA-Z0-9\-]+)/\1/s/
---regex-cakelisp=/\(def-introspect-struct ([a-zA-Z][a-zA-Z0-9\-]+)/\1/s/
---regex-cakelisp=/\(def-versioned-struct ([a-zA-Z][a-zA-Z0-9\-]+)/\1/s/
---regex-cakelisp=/\(defenum ([a-zA-Z][a-zA-Z0-9\-]+)/\1/g/
---regex-cakelisp=/\(defenum-local ([a-zA-Z][a-zA-Z0-9\-]+)/\1/g/
---regex-cakelisp=/\(defenum-local ([a-zA-Z][a-zA-Z0-9\-]+)/\1/g/
---regex-cakelisp=/\(def-type-alias ([a-zA-Z][a-zA-Z0-9\-]+)/\1/t/
---regex-cakelisp=/\(def-type-alias-global ([a-zA-Z][a-zA-Z0-9\-]+)/\1/t/
+# Don't pick up definitions in comments
+# See https://docs.ctags.io/en/latest/optlib.html#skipping-block-comments
+--_mtable-regex-cakelisp=toplevel/;;//{tenter=comment}
 
---regex-cakelisp=/\(var-global ([a-zA-Z][a-zA-Z0-9\-]+)/\1/v/
+# As a performance optimization, keep the long list of invocations out of toplevel. This makes a big
+# difference on performance.
+--_mtable-regex-cakelisp=toplevel/\(//{tenter=invocation}
+
+# We haven't matched anything yet, but stay in toplevel
+--_mtable-regex-cakelisp=toplevel/.//
+
+--_mtable-regex-cakelisp=comment/\n//{tleave}
+# Stay in comment until we match newline (otherwise, table is automatically popped)
+--_mtable-regex-cakelisp=comment/.//
+
+# A note on invocations: We'll only scan through this list once, then ctags will automatically
+# leave the invocation table (returning to toplevel). If these were instead toplevel, the parser
+# becomes extremely slow, because it tries to check every definition against every character.
+# These are roughly in order of frequency of use then semantic similarity
+
+# TODO: Detect module-local variables
+# For now, just assume the g- and s- convention holds
+--_mtable-regex-cakelisp=invocation/var ([gs]-[a-zA-Z][a-zA-Z0-9\-]+)/\1/v/
+
+# These were added in a test to see if very common invocations which don't create definitions would
+# make parsing faster. The effect was negligible.
+# --_mtable-regex-cakelisp=invocation/addr///
+# --_mtable-regex-cakelisp=invocation/set///
+# --_mtable-regex-cakelisp=invocation/array///
+# --_mtable-regex-cakelisp=invocation/path///
+# --_mtable-regex-cakelisp=invocation/field///
+
+--_mtable-regex-cakelisp=invocation/var-global ([a-zA-Z][a-zA-Z0-9\-]+)/\1/v/
+--_mtable-regex-cakelisp=invocation/defun ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
+--_mtable-regex-cakelisp=invocation/defun-local ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
+--_mtable-regex-cakelisp=invocation/defstruct ([a-zA-Z][a-zA-Z0-9\-]+)/\1/s/
+--_mtable-regex-cakelisp=invocation/defstruct-local ([a-zA-Z][a-zA-Z0-9\-]+)/\1/s/
+
+# Cannot work without counting parens
+# --_mtable-regex-cakelisp=invocation/defstruct ([a-zA-Z][a-zA-Z0-9\-]+)/\1/s/{scope=push}{tenter=struct}
+# --_mtable-regex-cakelisp=invocation/defstruct-local ([a-zA-Z][a-zA-Z0-9\-]+)/\1/s/{scope=push}{tenter=struct}
+
+--_mtable-regex-cakelisp=invocation/defun-nodecl ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
+--_mtable-regex-cakelisp=invocation/def-c-function-alias ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
+--_mtable-regex-cakelisp=invocation/defun-comptime ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
+--_mtable-regex-cakelisp=invocation/defmacro ([a-zA-Z][a-zA-Z0-9\-]+)/\1/d/
+--_mtable-regex-cakelisp=invocation/defgenerator ([a-zA-Z][a-zA-Z0-9\-]+)/\1/d/
+
+--_mtable-regex-cakelisp=invocation/def-introspect-struct ([a-zA-Z][a-zA-Z0-9\-]+)/\1/s/
+--_mtable-regex-cakelisp=invocation/def-versioned-struct ([a-zA-Z][a-zA-Z0-9\-]+)/\1/s/
+
+--_mtable-regex-cakelisp=invocation/defenum ([a-zA-Z][a-zA-Z0-9\-]+)/\1/g/{scope=push}{tenter=enum}
+--_mtable-regex-cakelisp=invocation/defenum-local ([a-zA-Z][a-zA-Z0-9\-]+)/\1/g/{scope=push}{tenter=enum}
+--_mtable-regex-cakelisp=invocation/defenum-and-string-table ([a-zA-Z][a-zA-Z0-9\-]+)/\1/g/{scope=push}{tenter=enum}
+
+--_mtable-regex-cakelisp=invocation/def-type-alias ([a-zA-Z][a-zA-Z0-9\-]+)/\1/t/
+--_mtable-regex-cakelisp=invocation/def-type-alias-global ([a-zA-Z][a-zA-Z0-9\-]+)/\1/t/
 
 # Should only capture variables at the beginning of the line, i.e. module-local variables
 # This will miss variables in e.g. a comptime-cond, but a more robust solution would require
 # keeping track of scope here, which I don't want to do.
---regex-cakelisp=/^\(var ([a-zA-Z][a-zA-Z0-9\-]+)/\1/v/
+# Commented now that _mtable-regex-cakelisp is used, which is harder to determine whether we are at
+# the beginning of a line.
+#--_mtable-regex-cakelisp=invocation/^\(var ([a-zA-Z][a-zA-Z0-9\-]+)/\1/v/
 
---regex-cakelisp=/\(comptime-define-symbol (['a-zA-Z][a-zA-Z0-9\-]+)/\1/c/
+--_mtable-regex-cakelisp=invocation/comptime-define-symbol (['a-zA-Z][a-zA-Z0-9\-]+)/\1/c/
+
+# If we don't match any of the above, we can leave right away.
+
+--_mtable-regex-cakelisp=enum/\)//{scope=pop}{tleave}
+--_mtable-regex-cakelisp=enum/;;//{tenter=comment}
+--_mtable-regex-cakelisp=enum/([a-zA-Z][a-zA-Z0-9\-]+)/\1/e/
+--_mtable-regex-cakelisp=enum/.//
+
+# We can't parse struct members because we cana't figure out whether the closing paren closes the
+# type or the struct definition.
+# --_mtable-regex-cakelisp=struct/;;//{tenter=comment}
+# --_mtable-regex-cakelisp=struct/([a-zA-Z][a-zA-Z0-9\-]+) [^\n]+\n/\1/m/
+# --_mtable-regex-cakelisp=struct/\)//{scope=pop}{tleave}
+# --_mtable-regex-cakelisp=struct/.//
 
 # Augment the C++ parser to find *some* of the built-ins. C statement generator-based ones will not
 # work with this, unfortunately.
