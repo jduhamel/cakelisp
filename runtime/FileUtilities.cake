@@ -155,6 +155,19 @@
   (var file-size size_t)
   (return (read-file-into-memory-ex in-file 0 (addr file-size))))
 
+;; Useful when you know exactly how large the file should be
+(defun open-read-file-into-buffer (filename (addr (const char))
+                                   buffer (addr void)
+                                   buffer-size size_t
+                                   &return bool)
+  (if-open-file-scoped filename "rb" in-file
+    (scope
+     ;; Necessary because if we return right away our deferred close will close the file before we read!
+     (var result int (fread buffer buffer-size 1 in-file))
+     (return (= 1 result)))
+    (scope
+     (return false))))
+
 (defun write-string (out-file (addr FILE) out-string (addr (const char)))
   (var string-length size_t (strlen out-string))
   ;; (fprintf stderr "%s has length %d\n" out-string (type-cast string-length int))

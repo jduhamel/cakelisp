@@ -322,7 +322,7 @@
 ;; Declare a variable which can be accessed globally, but is not exposed in the header.
 (defgenerator var-hidden-global (name symbol
                                  ;; global-type-index (index array)
-                                 module-type-index (index array)
+                                 module-type-index (index any)
                                  value-index (index array))
   ;; Define an array in the module and expose it as a pointer
   ;; e.g. in .c:
@@ -433,6 +433,18 @@
     (each-in-range (array-size (token-splice array-name)) (token-splice iterator-name)
       (var (token-splice item-name) (token-splice item-type)
         (at (token-splice iterator-name) (token-splice array-name)))
+      (token-splice-rest body tokens)))
+  (return true))
+
+;; Made for when an array and size are passed to a function etc.
+(defmacro each-item-addr-in-addr-array (array-name any array-size any
+                                        iterator-name symbol
+                                        item-name symbol item-type any
+                                        &rest body any)
+  (tokenize-push output
+    (each-in-range (token-splice array-size) (token-splice iterator-name)
+      (var (token-splice item-name) (token-splice item-type)
+        (addr (at (token-splice iterator-name) (token-splice array-name))))
       (token-splice-rest body tokens)))
   (return true))
 
@@ -706,6 +718,14 @@
   ;; GCC: https://gcc.gnu.org/onlinedocs/gcc/Alignment.html#Alignment
   (tokenize-push output
     (__alignof__ (token-splice type-or-field)))
+  (return true))
+
+(defmacro swap (a any b any type any)
+  (tokenize-push output
+    (scope
+     (var swap-temp (token-splice type) (token-splice a))
+     (set (token-splice a) (token-splice b))
+     (set (token-splice b) swap-temp)))
   (return true))
 
 ;;
