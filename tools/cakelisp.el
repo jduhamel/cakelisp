@@ -90,3 +90,22 @@
 
 (add-to-list 'auto-mode-alist '("\\.cake?\\'" . cakelisp-mode))
 (add-to-list 'auto-mode-alist '("\\.cakedata?\\'" . cakelisp-mode))
+
+(setq cakelisp-universal-ctags-executable "ctags-universal")
+
+(defun cakelisp-update-tags-in-dominating-directory ()
+  (interactive)
+  (message "%s" (locate-dominating-file buffer-file-name "cakelisp_cache"))
+  (let ((my-tags-output-directory (locate-dominating-file buffer-file-name "cakelisp_cache")))
+    (if my-tags-output-directory
+      (let ((default-directory my-tags-output-directory))
+        (compile (string-join
+                  (list cakelisp-universal-ctags-executable
+                        "--options=Dependencies/cakelisp/tools/cakelisp.ctags"
+                        "--output-format=etags"
+                        "src/*"
+                        "Dependencies/cakelisp/runtime/*"
+                        "Dependencies/cakelisp/src/*"
+                        "Dependencies/gamelib/src/*")
+                  " ")))
+      (message "No cakelisp_cache found above %s" buffer-file-name))))
