@@ -1662,7 +1662,8 @@ bool BuildEvaluateReferences(EvaluatorEnvironment& environment, int& numErrorsOu
 						// A known Cakelisp function call
 						for (int i = 0; i < (int)referenceStatus.references.size(); ++i)
 						{
-							ObjectReference& reference = referenceStatus.references[i];
+							// Copy it in case the referenceStatus.references is reallocated
+							ObjectReference reference = referenceStatus.references[i];
 							// In case a function has already guessed the invocation was a C/C++
 							// function, clear that invocation output
 							resetGeneratorOutput(*reference.spliceOutput);
@@ -1695,7 +1696,8 @@ bool BuildEvaluateReferences(EvaluatorEnvironment& environment, int& numErrorsOu
 						// handled in the next pass
 						for (int i = 0; i < (int)referenceStatus.references.size(); ++i)
 						{
-							ObjectReference& reference = referenceStatus.references[i];
+							// Copy it in case the referenceStatus.references is reallocated
+							ObjectReference reference = referenceStatus.references[i];
 							// Run function invocation on it
 							bool result = FunctionInvocationGenerator(
 							    environment, reference.context, *reference.tokens,
