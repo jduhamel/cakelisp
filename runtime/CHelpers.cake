@@ -717,7 +717,11 @@
 (defmacro alignment-of (type-or-field any)
   ;; GCC: https://gcc.gnu.org/onlinedocs/gcc/Alignment.html#Alignment
   (tokenize-push output
-    (__alignof__ (token-splice type-or-field)))
+    (comptime-cond
+     ('Windows
+      (__alignof (token-splice type-or-field)))
+     (true
+      (__alignof__ (token-splice type-or-field)))))
   (return true))
 
 (defmacro swap (a any b any type any)
