@@ -2408,12 +2408,14 @@ bool TokenizePushGenerator(EvaluatorEnvironment& environment, const EvaluatorCon
 	if (outputIndex == -1)
 		return false;
 
+	addLangTokenOutput(output.source, StringOutMod_OpenBlock, &tokens[startTokenIndex]);
+
 	// Start off with a good token to refer back to in case of problems. In this case, use
 	// "tokenize-push" which will tell the reader outputEvalHandle is created by the invocation
 	// TODO: This token can't actually be referred to later. Rather than passing a token, take a
 	// std::string instead?
 	Token evaluateOutputTempVar = tokens[startTokenIndex + 1];
-	MakeContextUniqueSymbolName(environment, context, "outputEvalHandle", &evaluateOutputTempVar);
+	evaluateOutputTempVar.contents = "outputEvalHandle";
 	// Evaluate output variable
 	{
 		addStringOutput(output.source, "std::vector<Token>&", StringOutMod_SpaceAfter,
@@ -2434,7 +2436,6 @@ bool TokenizePushGenerator(EvaluatorEnvironment& environment, const EvaluatorCon
 	if (startOutputToken == -1)
 		return false;
 
-	addLangTokenOutput(output.source, StringOutMod_OpenBlock, &tokens[startTokenIndex]);
 	addStringOutput(output.source, "TokenizePushContext spliceContext", StringOutMod_None,
 	                &tokens[startTokenIndex]);
 	addLangTokenOutput(output.source, StringOutMod_EndStatement, &tokens[startTokenIndex]);
