@@ -87,6 +87,7 @@
 # --_mtable-regex-cakelisp=invocation/field///
 
 --_mtable-regex-cakelisp=invocation/var-global ([a-zA-Z][a-zA-Z0-9\-]+)/\1/v/
+--_mtable-regex-cakelisp=invocation/bundle-file ([a-zA-Z][a-zA-Z0-9\-]+)/\1/v/
 --_mtable-regex-cakelisp=invocation/defun ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
 --_mtable-regex-cakelisp=invocation/defun-local ([a-zA-Z][a-zA-Z0-9\-]+)/\1/f/
 --_mtable-regex-cakelisp=invocation/defstruct ([a-zA-Z][a-zA-Z0-9\-]+)/\1/s/
