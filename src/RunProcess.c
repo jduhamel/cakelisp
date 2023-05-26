@@ -93,6 +93,39 @@ void subprocessReceiveStdOut(const char* processOutputBuffer)
 	Logf("%s", processOutputBuffer);
 }
 
+bool runProcessWriteCharToBuffer(char c, char** at, char* bufferStart, int bufferSize)
+{
+	**at = c;
+	++(*at);
+	char* endOfBuffer = bufferStart + (bufferSize - 1);
+	if (*at > endOfBuffer)
+	{
+		Logf("error: buffer of size %d was too small. String will be cut off\n", bufferSize);
+		*endOfBuffer = '\0';
+		return false;
+	}
+
+	return true;
+}
+
+bool runProcessWriteStringToBuffer(const char* str, char** at, char* bufferStart, int bufferSize)
+{
+	for (const char* c = str; *c != '\0'; ++c)
+	{
+		**at = *c;
+		++(*at);
+		char* endOfBuffer = bufferStart + (bufferSize - 1);
+		if (*at > endOfBuffer)
+		{
+			Logf("error: buffer of size %d was too small. String will be cut off\n", bufferSize);
+			*(endOfBuffer) = '\0';
+			return false;
+		}
+	}
+
+	return true;
+}
+
 int runProcess(const RunProcessArguments* arguments, int* statusOut)
 {
 	if (!arguments->arguments)
@@ -254,20 +287,22 @@ int runProcess(const RunProcessArguments* arguments, int* statusOut)
 			if (isFirstArg)
 			{
 				isFirstArg = false;
-				if (!writeCharToBuffer('"', &writeHead, commandLineString, commandLineLength))
+				if (!runProcessWriteCharToBuffer('"', &writeHead, commandLineString,
+				                                 commandLineLength))
 				{
 					Log("error: ran out of space to write command\n");
 					free(commandLineString);
 					return 1;
 				}
-				if (!writeStringToBuffer(fileToExecute, &writeHead, commandLineString,
-				                         commandLineLength))
+				if (!runProcessWriteStringToBuffer(fileToExecute, &writeHead, commandLineString,
+				                                   commandLineLength))
 				{
 					Log("error: ran out of space to write command\n");
 					free(commandLineString);
 					return 1;
 				}
-				if (!writeCharToBuffer('"', &writeHead, commandLineString, commandLineLength))
+				if (!runProcessWriteCharToBuffer('"', &writeHead, commandLineString,
+				                                 commandLineLength))
 				{
 					Log("error: ran out of space to write command\n");
 					free(commandLineString);
@@ -276,7 +311,8 @@ int runProcess(const RunProcessArguments* arguments, int* statusOut)
 			}
 			else
 			{
-				if (!writeStringToBuffer(*arg, &writeHead, commandLineString, commandLineLength))
+				if (!runProcessWriteStringToBuffer(*arg, &writeHead, commandLineString,
+				                                   commandLineLength))
 				{
 					Log("error: ran out of space to write command\n");
 					free(commandLineString);
@@ -286,7 +322,7 @@ int runProcess(const RunProcessArguments* arguments, int* statusOut)
 
 			if (*(arg + 1) != NULL)
 			{
-				if (!writeCharToBuffer(' ', &writeHead, commandLineString, commandLineLength))
+				if (!runProcessWriteCharToBuffer(' ', &writeHead, commandLineString, commandLineLength))
 				{
 					Log("error: ran out of space to write command\n");
 					free(commandLineString);
@@ -517,19 +553,32 @@ void pollSubprocessOutput(SubprocessOnOutputFunc onOutput)
 		Subprocess* process = &s_subprocesses[i];
 		if (!process->command)
 			continue;
-		// TODO TODO WRITE ME
-		// We cannot wait indefinitely because the process eventually waits for us to read from the
-		// output pipe (e.g. its buffer gets full). pollProcessTimeMilliseconds may need to be
-		// tweaked for better performance; if the buffer is full, the subprocess will wait for as
-		// long as pollProcessTimeMilliseconds - time taken to fill buffer. Very low wait times will
-		// mean Cakelisp unnecessarily taking up cycles, so it's a tradeoff.
-		const int pollProcessTimeMilliseconds = 50;
-		while (WAIT_TIMEOUT ==
-		       WaitForSingleObject(process->processInfo->hProcess, pollProcessTimeMilliseconds))
-			readProcessPipe(process, onOutput);
+		HANDLE hParentStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
-		// If the wait was ended but wasn't a timeout, we still need to read out
-		readProcessPipe(process, onOutput);
+		char buffer[4096] = {0};
+		bool encounteredError = false;
+		DWORD bytesAvailable = 0;
+		while (PeekNamedPipe(process->hChildStd_OUT_Rd, NULL, 0, NULL, &bytesAvailable, 0) && bytesAvailable)
+		{
+			DWORD bytesRead = 0;
+			DWORD bytesWritten = 0;
+			DWORD bytesToRead = bytesAvailable;
+			if (bytesToRead > sizeof(buffer) - 1)
+				bytesToRead = sizeof(buffer) - 1;
+			bool success =
+			    ReadFile(process->hChildStd_OUT_Rd, buffer, bytesToRead, &bytesRead, NULL);
+			if (!success || bytesRead == 0)
+			{
+				encounteredError = !success;
+				break;
+			}
+
+			if (onOutput)
+			{
+				buffer[bytesRead] = 0;
+				onOutput(buffer);
+			}
+		}
 	}
 #endif
 }
