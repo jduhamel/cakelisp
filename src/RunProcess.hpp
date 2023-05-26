@@ -21,6 +21,8 @@ CAKELISP_API int runProcess(const RunProcessArguments* arguments, int* statusOut
 
 typedef void (*SubprocessOnOutputFunc)(const char* subprocessOutput);
 
+CAKELISP_API void pollSubprocessOutput(SubprocessOnOutputFunc onOutput);
+
 CAKELISP_API void waitForAllProcessesClosed(SubprocessOnOutputFunc onOutput);
 
 void PrintProcessArguments(const char** processArguments);

@@ -8,6 +8,9 @@
 #include <sys/types.h>  // pid
 #include <sys/wait.h>   // waitpid
 #include <unistd.h>     // exec, fork
+// For select()
+#include <sys/time.h>
+#include <sys/types.h>
 
 #elif WINDOWS
 #define WIN32_LEAN_AND_MEAN
@@ -457,6 +460,79 @@ void readProcessPipe(Subprocess* process, SubprocessOnOutputFunc onOutput)
 	// 	    "output\n");
 }
 #endif
+
+// This function prints all the output for each process in one contiguous block, so that outputs
+// between two processes aren't mangled together terribly
+void pollSubprocessOutput(SubprocessOnOutputFunc onOutput)
+{
+#if defined(UNIX) || defined(MACOS)
+	while (true)
+	{
+		int highestFileDescriptor = 0;
+		fd_set readPipes;
+		FD_ZERO(&readPipes);
+		for (size_t i = 0; i < ArraySize(s_subprocesses); ++i)
+		{
+			Subprocess* process = &s_subprocesses[i];
+			if (!process->command)
+				continue;
+			FD_SET(process->pipeReadFileDescriptor, &readPipes);
+			if (process->pipeReadFileDescriptor > highestFileDescriptor)
+				highestFileDescriptor = process->pipeReadFileDescriptor;
+		}
+		struct timeval timeout = {0};  // Poll
+		int selectResult = select(highestFileDescriptor + 1, &readPipes, NULL, NULL, &timeout);
+		if (selectResult == 0)
+		{
+			// Nothing to read
+			break;
+		}
+		else if (selectResult == -1)
+		{
+			perror("Reading subprocess output");
+			break;
+		}
+		for (size_t i = 0; i < ArraySize(s_subprocesses); ++i)
+		{
+			Subprocess* process = &s_subprocesses[i];
+			if (!process->command)
+				continue;
+			if (FD_ISSET(process->pipeReadFileDescriptor, &readPipes))
+			{
+				char processOutputBuffer[1024] = {0};
+				int numBytesRead = read(process->pipeReadFileDescriptor, processOutputBuffer,
+				                        sizeof(processOutputBuffer));
+				if (numBytesRead > 0)
+				{
+					processOutputBuffer[numBytesRead] = '\0';
+					if (onOutput)
+						onOutput(processOutputBuffer);
+				}
+			}
+		}
+	}
+#elif WINDOWS
+	for (size_t i = 0; i < ArraySize(s_subprocesses); ++i)
+	{
+		Subprocess* process = &s_subprocesses[i];
+		if (!process->command)
+			continue;
+		// TODO TODO WRITE ME
+		// We cannot wait indefinitely because the process eventually waits for us to read from the
+		// output pipe (e.g. its buffer gets full). pollProcessTimeMilliseconds may need to be
+		// tweaked for better performance; if the buffer is full, the subprocess will wait for as
+		// long as pollProcessTimeMilliseconds - time taken to fill buffer. Very low wait times will
+		// mean Cakelisp unnecessarily taking up cycles, so it's a tradeoff.
+		const int pollProcessTimeMilliseconds = 50;
+		while (WAIT_TIMEOUT ==
+		       WaitForSingleObject(process->processInfo->hProcess, pollProcessTimeMilliseconds))
+			readProcessPipe(process, onOutput);
+
+		// If the wait was ended but wasn't a timeout, we still need to read out
+		readProcessPipe(process, onOutput);
+	}
+#endif
+}
 
 // This function prints all the output for each process in one contiguous block, so that outputs
 // between two processes aren't mangled together terribly
