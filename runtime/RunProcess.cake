@@ -34,6 +34,9 @@
 (defun run-process-poll-output (on-output subprocess-on-output-function)
   (pollSubprocessOutput on-output))
 
+(defun run-process-wait-for-all-processes-closed (on-output subprocess-on-output-function)
+  (waitForAllProcessesClosed on-output))
+
 ;; TODO: Kill once comptime can also be runtime
 (defmacro runtime-run-process-sequential-or (command array &rest on-failure array)
   (tokenize-push output
